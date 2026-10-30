@@ -90,7 +90,7 @@ function detectSlots(img, FW, FH) {
 }
 
 function initSlot(b) {
-  return { ...b, photo: null, zoom: 1, rot: 0, px: 0, py: 0, flip: false, bri: 100, con: 100, sat: 100 };
+  return { ...b, photo: null, zoom: 1, rot: 0, px: 0, py: 0, flip: false };
 }
 
 // ----- Danh sách khung -----
@@ -184,7 +184,6 @@ function drawPhoto(c, s) {
   c.beginPath();
   c.rect(s.x, s.y, s.w, s.h);
   c.clip();
-  c.filter = `saturate(${s.sat}%)`;
   c.translate(s.x + s.w / 2 + s.px, s.y + s.h / 2 + s.py);
   c.rotate(s.rot * Math.PI / 180);
   c.scale(s.flip ? -1 : 1, 1);
@@ -244,17 +243,15 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "rot", "sat", "flipBtn", "resetBtn", "clearBtn"]
+  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"]
     .forEach(id => $(id).disabled = !on);
   $("download").disabled = !(cur && cur.slots.length && cur.slots.every(x => x.photo));
   if (on) {
     $("zoom").value = s.zoom;
     $("rot").value = s.rot;
-    $("sat").value = s.sat;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
   $("rotVal").textContent = s ? s.rot + "°" : "";
-  $("satVal").textContent = s ? s.sat : "";
 
   if (!cur) return;
   const total = cur.slots.length;
@@ -282,7 +279,7 @@ async function putPhoto(file, i) {
     return;
   }
   if (cur !== entry) return;  // đã đổi khung trong lúc tải
-  Object.assign(entry.slots[i], { photo, zoom: 1, rot: 0, px: 0, py: 0, flip: false, bri: 100, con: 100, sat: 100 });
+  Object.assign(entry.slots[i], { photo, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
   sel = i;
   renderPreview();
 }
@@ -386,7 +383,6 @@ function bind(id, key) {
 }
 bind("zoom", "zoom");
 bind("rot", "rot");
-bind("sat", "sat");
 
 $("flipBtn").onclick = () => {
   const s = curSlot();
@@ -398,7 +394,7 @@ $("flipBtn").onclick = () => {
 $("resetBtn").onclick = () => {
   const s = curSlot();
   if (!s) return;
-  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false, bri: 100, con: 100, sat: 100 });
+  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false });
   renderPreview();
 };
 
@@ -406,7 +402,7 @@ $("clearBtn").onclick = () => {
   const s = curSlot();
   if (!s) return;
   s.photo = null;
-  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false, bri: 100, con: 100, sat: 100 });
+  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false });
   renderPreview();
 };
 
