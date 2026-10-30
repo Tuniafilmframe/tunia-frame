@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TUNIA Film &amp; Frame · Ghép ảnh vào khung</title>
+<meta name="description" content="TUNIA Film & Frame: chọn khung, thêm ảnh của bạn vào từng ô, rồi tải về." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Symbol: sao 4 cánh (dấu hiệu riêng của TUNIA) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="star4" viewBox="0 0 24 24">
+    <path d="M12 0 C12 7 17 12 24 12 C17 12 12 17 12 24 C12 17 7 12 0 12 C7 12 12 7 12 0Z" fill="currentColor" />
+  </symbol>
+</svg>
+
+<header class="topbar">
+  <a class="wordmark" href="#top" aria-label="TUNIA Film & Frame">
+    <span class="wm-name">TUNIA</span>
+    <span class="wm-sub">FILM <span class="fleur">⚜</span> FRAME</span>
+  </a>
+  <nav class="nav">
+    <a href="#khung">Khung</a>
+    <a href="#ghep">Ghép ảnh</a>
+    <a href="#lien-he">Liên hệ</a>
+  </nav>
+</header>
+
+<section class="hero" id="top">
+  <p class="label-caps">Photobooth · Selfbooth · Memories forever</p>
+  <h1 class="headline">TUNIA<br />Film &amp; Frame</h1>
+  <p class="tagline">Capture your best moments</p>
+  <div class="btn-row">
+    <a class="btn primary" href="#ghep">Ghép ảnh ngay</a>
+    <a class="btn ghost" href="#lien-he">Đặt lịch trước</a>
+  </div>
+</section>
+
+<section class="banner" id="khung">
+  <span class="banner-side"><svg class="star"><use href="#star4" /></svg></span>
+  <span class="banner-title">Khung của tiệm</span>
+  <span class="banner-side"><svg class="star"><use href="#star4" /></svg></span>
+</section>
+
+<section class="tool" id="ghep">
+  <div class="tool-head">
+    <p class="label-caps">Shoot · Print · Keep</p>
+    <h2 class="section-title">Ghép ảnh vào khung</h2>
+    <p class="caption">Chọn khung, bấm vào từng ô để thêm ảnh của bạn, rồi tải về máy.</p>
+  </div>
+
+  <div class="tool-grid">
+    <aside class="panel">
+      <h3 class="panel-title">1 · Chọn khung</h3>
+      <div id="frames" class="frames"></div>
+    </aside>
+
+    <section class="stage">
+      <div class="frame-frame">
+        <div id="wrap">
+          <canvas id="canvas"></canvas>
+          <div id="loading" hidden>Đang tải khung…</div>
+        </div>
+      </div>
+      <p class="hint" id="hint"></p>
+      <div class="btn-row">
+        <label class="btn primary">Chọn ảnh cho ô đang chọn<input type="file" id="file" accept="image/*" /></label>
+        <button class="btn" id="clearBtn" disabled>Xóa ảnh ô này</button>
+        <button class="btn primary" id="download" disabled>Tải khung đã ghép</button>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <h3 class="panel-title">2 · Chỉnh ô đang chọn</h3>
+      <div class="ctrl"><label>Phóng to <span id="zoomVal"></span></label><input type="range" id="zoom" min="1" max="4" step="0.01" value="1" disabled /></div>
+      <div class="ctrl"><label>Xoay <span id="rotVal"></span></label><input type="range" id="rot" min="-180" max="180" step="1" value="0" disabled /></div>
+      <div class="ctrl"><label>Độ sáng <span id="brightVal"></span></label><input type="range" id="bright" min="50" max="150" value="100" disabled /></div>
+      <div class="ctrl"><label>Tương phản <span id="contVal"></span></label><input type="range" id="cont" min="50" max="150" value="100" disabled /></div>
+      <div class="ctrl"><label>Độ bão hòa <span id="satVal"></span></label><input type="range" id="sat" min="0" max="200" value="100" disabled /></div>
+      <div class="btn-row">
+        <button class="btn" id="flipBtn" disabled>Lật ngang</button>
+        <button class="btn" id="resetBtn" disabled>Đặt lại ô</button>
+      </div>
+      <p class="note">Kéo ảnh trong ô để căn vị trí, lăn chuột để phóng to hoặc thu nhỏ. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+    </aside>
+  </div>
+</section>
+
+<section class="pricing">
+  <h2 class="headline-sm">BẢNG GIÁ</h2>
+  <div class="price-table">
+    <div class="pt-head"><span class="star-inline"><svg><use href="#star4" /></svg></span>4P</div>
+    <div class="pt-row"><span class="item">4P BASIC</span><span class="price">150K</span></div>
+    <div class="pt-row"><span class="item">4P BASIC PREMIUM</span><span class="price">220K</span></div>
+    <div class="pt-row"><span class="item">4P VINTAGE</span><span class="price">170K</span></div>
+    <div class="pt-row"><span class="item">4P VINTAGE PREMIUM</span><span class="price">240K</span></div>
+  </div>
+  <p class="caption">Giá minh họa. Thay bằng bảng giá thật của tiệm trước khi đưa lên.</p>
+</section>
+
+<footer class="footer" id="lien-he">
+  <div class="footer-inner">
+    <div>
+      <p class="wm-name gold">TUNIA</p>
+      <p class="label-caps gold">Film &amp; Frame</p>
+      <p class="caption light">Đặt lịch trước qua Zalo để giữ khung giờ đẹp nhất.</p>
+    </div>
+    <div class="contact">
+      <p class="label-caps">Zalo: 0900 000 000</p>
+      <p class="small">Số 00, đường Mẫu, Quận 0</p>
+      <p class="small">Mở cửa 9:00 – 21:00</p>
+      <a class="btn cream" href="#">+ Nhắn Zalo</a>
+    </div>
+    <div class="qr-row">
+      <div class="qr-box"><span class="qr-mock"></span><span class="label-caps">Google Maps</span></div>
+      <div class="qr-box"><span class="qr-mock"></span><span class="label-caps">Zalo</span></div>
+      <div class="qr-box"><span class="qr-mock"></span><span class="label-caps">Instagram</span></div>
+    </div>
+  </div>
+  <p class="footer-note">Mã QR và thông tin liên hệ là chỗ đặt mẫu, cần thay bằng thông tin thật.</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
