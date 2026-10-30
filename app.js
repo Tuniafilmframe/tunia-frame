@@ -96,7 +96,7 @@ function initSlot(b) {
 // ----- Danh sách khung -----
 async function init() {
   try {
-    const res = await fetch("frames/manifest.json");
+    const res = await fetch("frames/manifest.json?t=" + Date.now(), { cache: "no-store" });
     frames = await res.json();
   } catch (e) {
     frames = [];
