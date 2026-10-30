@@ -46,7 +46,7 @@ function loadPhoto(file) {
 
 // Tìm các vùng trong suốt nằm bên trong khung (không chạm mép ảnh) => danh sách ô
 function detectSlots(img, FW, FH) {
-  const sc = Math.min(1, 1000 / Math.max(FW, FH));
+  const sc = Math.min(1, 2000 / Math.max(FW, FH));
   const w = Math.round(FW * sc), h = Math.round(FH * sc), n = w * h;
   const tmp = document.createElement("canvas");
   tmp.width = w; tmp.height = h;
@@ -184,7 +184,7 @@ function drawPhoto(c, s) {
   c.beginPath();
   c.rect(s.x, s.y, s.w, s.h);
   c.clip();
-  c.filter = `brightness(${s.bri}%) contrast(${s.con}%) saturate(${s.sat}%)`;
+  c.filter = `saturate(${s.sat}%)`;
   c.translate(s.x + s.w / 2 + s.px, s.y + s.h / 2 + s.py);
   c.rotate(s.rot * Math.PI / 180);
   c.scale(s.flip ? -1 : 1, 1);
@@ -244,20 +244,16 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "rot", "bright", "cont", "sat", "flipBtn", "resetBtn", "clearBtn"]
+  ["zoom", "rot", "sat", "flipBtn", "resetBtn", "clearBtn"]
     .forEach(id => $(id).disabled = !on);
   $("download").disabled = !(cur && cur.slots.some(x => x.photo));
   if (on) {
     $("zoom").value = s.zoom;
     $("rot").value = s.rot;
-    $("bright").value = s.bri;
-    $("cont").value = s.con;
     $("sat").value = s.sat;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
   $("rotVal").textContent = s ? s.rot + "°" : "";
-  $("brightVal").textContent = s ? s.bri : "";
-  $("contVal").textContent = s ? s.con : "";
   $("satVal").textContent = s ? s.sat : "";
 
   if (!cur) return;
@@ -377,8 +373,6 @@ function bind(id, key) {
 }
 bind("zoom", "zoom");
 bind("rot", "rot");
-bind("bright", "bri");
-bind("cont", "con");
 bind("sat", "sat");
 
 $("flipBtn").onclick = () => {
