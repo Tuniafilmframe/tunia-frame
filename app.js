@@ -312,7 +312,7 @@ function syncControls() {
     $("rot").value = s.rot;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
-  $("rotVal").textContent = s ? s.rot + "°" : "";
+  $("rotVal").textContent = s ? Math.round(s.rot) + "°" : "";
   updateFrameList();
 
   const { filled, total } = totals();
@@ -380,15 +380,64 @@ function hit(x, y) {
   return best;
 }
 
+// Một ngón: kéo ảnh. Hai ngón: chụm/mở để phóng to, xoay hai ngón để xoay, di chuyển để kéo.
+const pointers = new Map();   // pointerId -> { x, y }
+let pinch = null;
+
+const wrapDeg = d => ((d + 180) % 360 + 360) % 360 - 180;
+function pinchState() {
+  const [a, b] = [...pointers.values()];
+  return {
+    dist: Math.hypot(b.x - a.x, b.y - a.y),
+    ang: Math.atan2(b.y - a.y, b.x - a.x),
+    mx: (a.x + b.x) / 2,
+    my: (a.y + b.y) / 2,
+  };
+}
+function startPinch() {
+  const st = pinchState();
+  const r = canvas.getBoundingClientRect();
+  const i = hit((st.mx - r.left) / r.width * cur.FW, (st.my - r.top) / r.height * cur.FH);
+  const idx = i >= 0 ? i : (drag && drag.i >= 0 ? drag.i : sel);
+  const s = idx >= 0 ? cur.slots[idx] : null;
+  if (!s || !s.photo) { pinch = null; return; }
+  if (idx !== sel) sel = idx;
+  pinch = { s, ...st, zoom0: s.zoom, rot0: s.rot };
+}
+
 canvas.addEventListener("pointerdown", e => {
   if (!cur) return;
-  const p = toFrame(e), i = hit(p.x, p.y);
-  drag = { i, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   canvas.setPointerCapture(e.pointerId);
-  if (i >= 0 && i !== sel) { sel = i; renderPreview(); }
+  if (pointers.size === 1) {
+    const p = toFrame(e), i = hit(p.x, p.y);
+    drag = { i, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+    if (i >= 0 && i !== sel) { sel = i; renderPreview(); }
+  } else if (pointers.size === 2) {
+    if (drag) drag.moved = true;   // không coi là bấm để mở chọn ảnh
+    startPinch();
+    renderPreview();
+  }
 });
 
 canvas.addEventListener("pointermove", e => {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size >= 2) {
+    if (!pinch) return;
+    const st = pinchState();
+    const s = pinch.s;
+    const r = canvas.getBoundingClientRect();
+    if (pinch.dist > 0) s.zoom = clamp(pinch.zoom0 * st.dist / pinch.dist, 1, 4);
+    s.rot = Math.round(wrapDeg(pinch.rot0 + (st.ang - pinch.ang) * 180 / Math.PI) * 10) / 10;
+    s.px += (st.mx - pinch.mx) * cur.FW / r.width;
+    s.py += (st.my - pinch.my) * cur.FH / r.height;
+    pinch.mx = st.mx; pinch.my = st.my;
+    renderPreview();
+    return;
+  }
+
   if (!drag) return;
   if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true;
   const s = drag.i >= 0 ? cur.slots[drag.i] : null;
@@ -402,14 +451,45 @@ canvas.addEventListener("pointermove", e => {
   drag.ly = e.clientY;
 });
 
-canvas.addEventListener("pointerup", () => {
-  if (drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
-    sel = drag.i;
-    fileInput.click();  // bấm vào ô trống => mở chọn ảnh
+function endPointer(e, cancelled) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size === 1) {
+    // còn một ngón: tiếp tục kéo từ vị trí hiện tại, không bị giật
+    pinch = null;
+    const [p] = [...pointers.values()];
+    if (drag) { drag.lx = p.x; drag.ly = p.y; drag.moved = true; }
+    return;
   }
-  drag = null;
+  if (pointers.size === 0) {
+    if (!cancelled && drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
+      sel = drag.i;
+      fileInput.click();  // bấm vào ô trống => mở chọn ảnh
+    }
+    drag = null;
+    pinch = null;
+  }
+}
+canvas.addEventListener("pointerup", e => endPointer(e, false));
+canvas.addEventListener("pointercancel", e => endPointer(e, true));
+
+// Bàn di chuột Mac (Safari): chụm/xoay hai ngón
+let gesture = null;
+canvas.addEventListener("gesturestart", e => {
+  if (pointers.size || !cur) return;   // trên điện thoại đã xử lý bằng cảm ứng
+  const s = curSlot();
+  if (!s || !s.photo) return;
+  e.preventDefault();
+  gesture = { s, zoom0: s.zoom, rot0: s.rot };
 });
-canvas.addEventListener("pointercancel", () => { drag = null; });
+canvas.addEventListener("gesturechange", e => {
+  if (!gesture) return;
+  e.preventDefault();
+  gesture.s.zoom = clamp(gesture.zoom0 * e.scale, 1, 4);
+  gesture.s.rot = Math.round(wrapDeg(gesture.rot0 + e.rotation) * 10) / 10;
+  renderPreview();
+});
+canvas.addEventListener("gestureend", () => { gesture = null; });
 
 canvas.addEventListener("wheel", e => {
   if (!cur) return;
