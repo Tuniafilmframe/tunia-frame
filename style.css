@@ -378,3 +378,16 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   color: var(--linen-200);
   text-align: center;
 }
+
+/* ---------- Bộ khung & bản in A4 ---------- */
+.set-name { font-family: var(--font-accent); font-style: italic; font-size: 18px; color: var(--ink-muted); margin: -8px 0 14px; }
+.frame-txt { display: flex; flex-direction: column; gap: 2px; }
+.frame-progress { font-size: 12px; color: var(--ink-muted); letter-spacing: .04em; }
+.frame-btn.done .frame-progress { color: var(--moss-500); font-weight: 600; }
+.mini-title { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+.sheet-mini { width: 100%; height: auto; display: block; background: #fff; border: 1px solid var(--line-soft); }
+.result { max-width: 900px; margin: 0 auto; padding: 24px 24px 72px; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.result[hidden] { display: none; }
+.result .tool-head { margin-bottom: 0; }
+.result-sheet { max-width: 720px; }
+#sheetBig { width: 100%; height: auto; display: block; background: #fff; }

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=5" />
+<link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
 
@@ -57,6 +57,7 @@
   <div class="tool-grid">
     <aside class="panel">
       <h3 class="panel-title">1 · Chọn khung</h3>
+      <p class="set-name"><span id="setName"></span> · <span id="progress"></span></p>
       <div id="frames" class="frames"></div>
     </aside>
 
@@ -85,7 +86,22 @@
         <button class="btn" id="resetBtn" disabled>Đặt lại ô</button>
       </div>
       <p class="note">Kéo ảnh trong ô để căn vị trí, lăn chuột để phóng to hoặc thu nhỏ. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+      <h3 class="panel-title mini-title">Bản in A4 · xem trước</h3>
+      <canvas id="sheetMini" class="sheet-mini"></canvas>
     </aside>
+  </div>
+</section>
+
+<section class="result" id="result" hidden>
+  <div class="tool-head">
+    <p class="label-caps">Memories forever</p>
+    <h2 class="section-title">Bản in A4</h2>
+    <p class="caption">Đủ ảnh rồi. Đây là thành phẩm khổ A4, 300 dpi, sẵn sàng để in.</p>
+  </div>
+  <div class="frame-frame result-sheet"><canvas id="sheetBig"></canvas></div>
+  <div class="btn-row">
+    <button class="btn" id="editAgain">Chỉnh lại ảnh</button>
+    <button class="btn primary" id="download2" disabled>Tải bản in A4</button>
   </div>
 </section>
 
@@ -123,6 +139,6 @@
   <p class="footer-note">Mã QR và thông tin liên hệ là chỗ đặt mẫu, cần thay bằng thông tin thật.</p>
 </footer>
 
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

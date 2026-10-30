@@ -1,7 +1,50 @@
-[
-  {
-    "id": "bo-leopard-a4",
-    "name": "Bộ Leopard · A4 (14 ô)",
-    "file": "bo-leopard-a4.png"
-  }
-]
+{
+  "sets": [
+    {
+      "id": "leopard",
+      "name": "Bộ Leopard",
+      "sheet": {
+        "w": 2480,
+        "h": 3508,
+        "bg": "#ffffff"
+      },
+      "frames": [
+        {
+          "id": "leopard-1",
+          "name": "Khung 1 · Collage",
+          "file": "leopard-1.png",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "id": "leopard-3",
+          "name": "Khung 2 · Dải 3 ô",
+          "file": "leopard-3.png",
+          "x": 695,
+          "y": 1
+        },
+        {
+          "id": "leopard-2",
+          "name": "Khung 3 · 3 ô ngang",
+          "file": "leopard-2.png",
+          "x": 1299,
+          "y": 0
+        },
+        {
+          "id": "leopard-4",
+          "name": "Khung 4 · 2 ô dọc",
+          "file": "leopard-4.png",
+          "x": 0,
+          "y": 1263
+        },
+        {
+          "id": "leopard-5",
+          "name": "Khung 5 · Polaroid",
+          "file": "leopard-5.png",
+          "x": 695,
+          "y": 1785
+        }
+      ]
+    }
+  ]
+}

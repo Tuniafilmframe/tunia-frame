@@ -1,19 +1,22 @@
-// ====== Ghép ảnh vào khung nhiều ô ======
-// Khung là file PNG: vùng trong suốt = các ô để khách thêm ảnh.
-// Các ô được tự động nhận diện, không cần khai báo tọa độ.
+// ====== TUNIA · Ghép ảnh vào bộ khung ======
+// Một "bộ" gồm nhiều khung PNG (ô trong suốt = chỗ đặt ảnh).
+// Khách ghép từng khung ở chế độ phóng to; khi đủ ảnh mọi ô, web ghép
+// tất cả khung vào đúng vị trí trên tấm A4 để xem và tải bản in 300 dpi.
 
 const $ = id => document.getElementById(id);
 const canvas = $("canvas");
 const ctx = canvas.getContext("2d");
 const fileInput = $("file");
 
-const PREVIEW_MAX = 1400;  // cạnh dài tối đa của bản xem trước
-const PHOTO_MAX = 2400;    // thu nhỏ ảnh khách trước khi dùng, giúp nhanh hơn
+const PREVIEW_MAX = 1400;  // cạnh ngang tối đa của khung đang ghép
+const PHOTO_MAX = 2400;    // thu nhỏ ảnh khách trước khi dùng (vẫn dư cho in 300 dpi)
+const DPI = 300;
 
-let frames = [];
-const cache = {};           // id -> { img, FW, FH, slots }
-let curId = null, cur = null, sel = -1, K = 1;
+let set = null;            // bộ khung đang dùng (từ manifest)
+let entries = [];          // [{ meta, img, FW, FH, slots }]
+let cur = null, sel = -1, K = 1;
 let drag = null;
+let wasComplete = false;
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -44,7 +47,7 @@ function loadPhoto(file) {
   });
 }
 
-// Tìm các vùng trong suốt nằm bên trong khung (không chạm mép ảnh) => danh sách ô
+// Tìm các vùng trong suốt nằm bên trong khung (không chạm mép) => danh sách ô
 function detectSlots(img, FW, FH) {
   const sc = Math.min(1, 2600 / Math.max(FW, FH));
   const w = Math.round(FW * sc), h = Math.round(FH * sc), n = w * h;
@@ -56,7 +59,6 @@ function detectSlots(img, FW, FH) {
 
   const open = new Uint8Array(n);
   for (let i = 0; i < n; i++) open[i] = data[i * 4 + 3] < 128 ? 1 : 0;
-
   const seen = new Uint8Array(n);
   const stack = new Int32Array(n);
   const boxes = [];
@@ -84,75 +86,93 @@ function detectSlots(img, FW, FH) {
       boxes.push({ x: x0 / sc, y: y0 / sc, w: (x1 - x0 + 1) / sc, h: (y1 - y0 + 1) / sc });
     }
   }
-  // Sắp xếp từ trên xuống, trái sang phải
   boxes.sort((a, b) => (a.y - b.y) || (a.x - b.x));
   return boxes;
 }
 
-function initSlot(b) {
-  return { ...b, photo: null, zoom: 1, rot: 0, px: 0, py: 0, flip: false };
-}
+const blankSlot = b => ({ ...b, photo: null, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
+const RESET = { zoom: 1, rot: 0, px: 0, py: 0, flip: false };
 
-// ----- Danh sách khung -----
+// ----- Tải bộ khung -----
 async function init() {
+  let manifest;
   try {
     const res = await fetch("frames/manifest.json?t=" + Date.now(), { cache: "no-store" });
-    frames = await res.json();
+    manifest = await res.json();
   } catch (e) {
-    frames = [];
-  }
-  if (!frames.length) {
-    $("hint").textContent = "Chưa có khung nào. Thêm file PNG vào thư mục frames/ rồi chạy make_manifest.py.";
+    $("hint").textContent = "Chưa có bộ khung nào. Kiểm tra lại frames/manifest.json.";
     return;
   }
+  const sets = manifest.sets || [];
+  if (!sets.length) { $("hint").textContent = "Chưa có bộ khung nào."; return; }
+  await loadSet(sets[0]);
+}
+
+async function loadSet(s) {
+  set = s;
+  $("setName").textContent = s.name;
+  $("loading").hidden = false;
+  try {
+    entries = await Promise.all(s.frames.map(async meta => {
+      const img = await loadImage("frames/" + meta.file);
+      const FW = img.naturalWidth, FH = img.naturalHeight;
+      return { meta, img, FW, FH, slots: detectSlots(img, FW, FH).map(blankSlot) };
+    }));
+  } catch (e) {
+    $("loading").hidden = true;
+    $("hint").textContent = e.message;
+    return;
+  }
+  $("loading").hidden = true;
   renderFrameList();
-  selectFrame(frames[0].id);
+  selectFrame(0);
 }
 
 function renderFrameList() {
   const box = $("frames");
   box.innerHTML = "";
-  frames.forEach(f => {
+  entries.forEach((e, i) => {
     const b = document.createElement("button");
     b.className = "frame-btn";
-    b.dataset.id = f.id;
+    b.dataset.i = i;
     const im = document.createElement("img");
-    im.src = "frames/" + f.file;
+    im.src = "frames/" + e.meta.file;
     im.alt = "";
-    const sp = document.createElement("span");
-    sp.textContent = f.name;
-    b.append(im, sp);
-    b.onclick = () => selectFrame(f.id);
+    const txt = document.createElement("span");
+    txt.className = "frame-txt";
+    const nm = document.createElement("span");
+    nm.textContent = e.meta.name;
+    const pg = document.createElement("span");
+    pg.className = "frame-progress";
+    txt.append(nm, pg);
+    b.append(im, txt);
+    b.onclick = () => selectFrame(i);
     box.appendChild(b);
+  });
+  updateFrameList();
+}
+
+function updateFrameList() {
+  document.querySelectorAll(".frame-btn").forEach(b => {
+    const e = entries[+b.dataset.i];
+    const filled = e.slots.filter(s => s.photo).length;
+    b.classList.toggle("active", e === cur);
+    b.classList.toggle("done", filled === e.slots.length);
+    b.querySelector(".frame-progress").textContent =
+      filled === e.slots.length ? `✓ Đủ ${filled} ảnh` : `${filled}/${e.slots.length} ảnh`;
   });
 }
 
-async function selectFrame(id) {
-  curId = id;
-  document.querySelectorAll(".frame-btn").forEach(b => b.classList.toggle("active", b.dataset.id === id));
-  const meta = frames.find(f => f.id === id);
-  if (!cache[id]) {
-    $("loading").hidden = false;
-    try {
-      const img = await loadImage("frames/" + meta.file);
-      const FW = img.naturalWidth, FH = img.naturalHeight;
-      cache[id] = { img, FW, FH, slots: detectSlots(img, FW, FH).map(initSlot) };
-    } catch (e) {
-      $("loading").hidden = true;
-      $("hint").textContent = e.message;
-      return;
-    }
-    $("loading").hidden = true;
-  }
-  if (curId !== id) return;  // đã chuyển sang khung khác trong lúc tải
-  cur = cache[id];
+function selectFrame(i) {
+  cur = entries[i];
   K = Math.min(1, PREVIEW_MAX / cur.FW);
-  sel = cur.slots.length ? 0 : -1;
+  sel = cur.slots.findIndex(s => !s.photo);
+  if (sel < 0) sel = cur.slots.length ? 0 : -1;
   renderPreview();
 }
 
-// ----- Vẽ -----
-function geometry(s) {
+// ----- Hình học -----
+function clampSlot(s) {
   const a = s.rot * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
   let mx = 0, my = 0;
   for (const [dx, dy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
@@ -160,15 +180,8 @@ function geometry(s) {
     mx = Math.max(mx, Math.abs(x * c + y * sn));
     my = Math.max(my, Math.abs(-x * sn + y * c));
   }
-  return { c, sn, mx, my };
-}
-
-// Giữ ảnh luôn phủ kín ô khi kéo/xoay; trả về tỉ lệ hiển thị của ảnh.
-function clampSlot(s) {
-  const { c, sn, mx, my } = geometry(s);
   const pw = s.photo.width, ph = s.photo.height;
-  const smin = Math.max(2 * mx / pw, 2 * my / ph);
-  const S = smin * s.zoom;
+  const S = Math.max(2 * mx / pw, 2 * my / ph) * s.zoom;
   let lx = s.px * c + s.py * sn, ly = -s.px * sn + s.py * c;
   const bx = pw * S / 2 - mx, by = ph * S / 2 - my;
   lx = clamp(lx, -bx, bx);
@@ -178,6 +191,7 @@ function clampSlot(s) {
   return S;
 }
 
+// ----- Vẽ -----
 function drawPhoto(c, s) {
   const S = clampSlot(s);
   c.save();
@@ -192,12 +206,12 @@ function drawPhoto(c, s) {
   c.restore();
 }
 
-function drawOverlay(c, s, i, active, FW, FH) {
-  const lw = Math.min(FW, FH) * 0.004;
+function drawOverlay(c, e, s, i, active) {
+  const lw = Math.min(e.FW, e.FH) * 0.004;
   const fs = Math.min(s.w, s.h) * 0.12;
   c.save();
   if (!s.photo) {
-    c.fillStyle = "rgba(61,69,48,0.14)";
+    c.fillStyle = "rgba(241,236,225,0.92)";
     c.fillRect(s.x, s.y, s.w, s.h);
   }
   c.lineWidth = lw;
@@ -217,23 +231,72 @@ function drawOverlay(c, s, i, active, FW, FH) {
   c.restore();
 }
 
-// Vẽ cả khung. preview=true thì có viền chọn ô; xuất file thì không có.
-function draw(c, k, preview) {
-  const { FW, FH, img, slots } = cur;
+// Vẽ một khung (ảnh + khung) tại vị trí (ox, oy) với tỉ lệ k, không xóa nền.
+function drawEntry(c, e, k, ox, oy, preview) {
+  c.setTransform(k, 0, 0, k, ox * k, oy * k);
+  e.slots.forEach(s => { if (s.photo) drawPhoto(c, s); });
+  c.drawImage(e.img, 0, 0, e.FW, e.FH);
+  if (preview) e.slots.forEach((s, i) => drawOverlay(c, e, s, i, e === cur && i === sel));
   c.setTransform(1, 0, 0, 1, 0, 0);
-  c.clearRect(0, 0, c.canvas.width, c.canvas.height);
-  c.setTransform(k, 0, 0, k, 0, 0);
-  slots.forEach(s => { if (s.photo) drawPhoto(c, s); });
-  c.drawImage(img, 0, 0, FW, FH);
-  if (preview) slots.forEach((s, i) => drawOverlay(c, s, i, i === sel, FW, FH));
+}
+
+// Ghép cả bộ lên tấm A4. k = tỉ lệ so với kích thước in thật.
+function drawSheet(c, k) {
+  const sh = set.sheet;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.fillStyle = sh.bg || "#ffffff";
+  c.fillRect(0, 0, c.canvas.width, c.canvas.height);
+  entries.forEach(e => drawEntry(c, e, k, e.meta.x, e.meta.y, false));
 }
 
 function renderPreview() {
   if (!cur) return;
   canvas.width = Math.round(cur.FW * K);
   canvas.height = Math.round(cur.FH * K);
-  draw(ctx, K, true);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawEntry(ctx, cur, K, 0, 0, true);
   syncControls();
+  scheduleSheet();
+}
+
+// Bản xem trước A4 nhỏ (cập nhật nhẹ nhàng, không vẽ lại mỗi lần di chuột)
+let sheetQueued = false;
+function scheduleSheet() {
+  if (sheetQueued) return;
+  sheetQueued = true;
+  requestAnimationFrame(() => {
+    sheetQueued = false;
+    const mini = $("sheetMini");
+    const k = 360 / set.sheet.w;
+    mini.width = Math.round(set.sheet.w * k);
+    mini.height = Math.round(set.sheet.h * k);
+    drawSheet(mini.getContext("2d"), k);
+    updateResult();
+  });
+}
+
+function totals() {
+  let filled = 0, total = 0;
+  entries.forEach(e => e.slots.forEach(s => { total++; if (s.photo) filled++; }));
+  return { filled, total };
+}
+
+// Khi đủ ảnh: hiện tấm A4 lớn
+function updateResult() {
+  const { filled, total } = totals();
+  const done = total > 0 && filled === total;
+  $("result").hidden = !done;
+  $("download").disabled = !done;
+  $("download2").disabled = !done;
+  if (done) {
+    const big = $("sheetBig");
+    const k = 1400 / set.sheet.w;
+    big.width = Math.round(set.sheet.w * k);
+    big.height = Math.round(set.sheet.h * k);
+    drawSheet(big.getContext("2d"), k);
+    if (!wasComplete) $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  wasComplete = done;
 }
 
 function curSlot() {
@@ -243,62 +306,61 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"]
-    .forEach(id => $(id).disabled = !on);
-  $("download").disabled = !(cur && cur.slots.length && cur.slots.every(x => x.photo));
+  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
   if (on) {
     $("zoom").value = s.zoom;
     $("rot").value = s.rot;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
   $("rotVal").textContent = s ? s.rot + "°" : "";
+  updateFrameList();
 
-  if (!cur) return;
-  const total = cur.slots.length;
-  const filled = cur.slots.filter(x => x.photo).length;
-  $("hint").textContent = total === 0
-    ? "Khung này không có ô trong suốt. Kiểm tra lại file PNG."
-    : filled < total
-      ? `Đã thêm ${filled}/${total} ảnh. Còn ${total - filled} ô trống — thêm đủ để tải bản in A4.`
-      : `Đã đủ ${total}/${total} ảnh. Căn chỉnh xong thì bấm "Tải bản in A4". Shoot · Print · Keep.`;
+  const { filled, total } = totals();
+  const here = cur.slots.filter(x => x.photo).length;
+  $("progress").textContent = `${filled}/${total} ảnh`;
+  $("hint").textContent = filled === total
+    ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”."
+    : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô để chọn, kéo ảnh để căn vị trí.`;
 }
 
 // ----- Đưa ảnh vào ô -----
-function firstEmpty() {
-  return cur ? cur.slots.findIndex(s => !s.photo) : -1;
-}
-
-async function putPhoto(file, i) {
-  if (!file || !file.type.startsWith("image/") || !cur || i < 0) return;
-  const entry = cur;
+async function putPhoto(file, e, i) {
+  if (!file || !file.type.startsWith("image/") || !e || i < 0) return;
   let photo;
   try {
     photo = await loadPhoto(file);
-  } catch (e) {
-    $("hint").textContent = e.message;
+  } catch (err) {
+    $("hint").textContent = err.message;
     return;
   }
-  if (cur !== entry) return;  // đã đổi khung trong lúc tải
-  Object.assign(entry.slots[i], { photo, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
-  sel = i;
+  Object.assign(e.slots[i], { photo }, RESET);
+  if (e === cur) sel = i;
   renderPreview();
 }
 
 fileInput.onchange = () => {
   const f = fileInput.files[0];
   fileInput.value = "";
-  if (f && sel >= 0) putPhoto(f, sel);
+  if (f && cur && sel >= 0) putPhoto(f, cur, sel);
 };
 
+// Thêm nhiều ảnh: điền lần lượt vào ô trống, khung đang mở trước rồi tới các khung sau
 $("fileMulti").onchange = async () => {
   const files = [...$("fileMulti").files].filter(f => f.type.startsWith("image/"));
   $("fileMulti").value = "";
   if (!cur) return;
-  for (const f of files) {
-    const i = firstEmpty();
-    if (i < 0) break;
-    await putPhoto(f, i);
+  const start = entries.indexOf(cur);
+  const order = entries.slice(start).concat(entries.slice(0, start));
+  const targets = [];
+  order.forEach(e => e.slots.forEach((s, i) => { if (!s.photo) targets.push([e, i]); }));
+  $("hint").textContent = "Đang thêm ảnh…";
+  for (let n = 0; n < files.length && n < targets.length; n++) {
+    await putPhoto(files[n], targets[n][0], targets[n][1]);
   }
+  // mở khung tiếp theo còn ô trống (nếu có)
+  const next = entries.findIndex(e => e.slots.some(s => !s.photo));
+  if (next >= 0 && !cur.slots.some(s => !s.photo)) selectFrame(next);
+  else renderPreview();
 };
 
 // ----- Chuột / cảm ứng -----
@@ -351,62 +413,33 @@ canvas.addEventListener("pointercancel", () => { drag = null; });
 
 canvas.addEventListener("wheel", e => {
   if (!cur) return;
-  e.preventDefault();
   const p = toFrame(e), i = hit(p.x, p.y);
   if (i < 0) return;
+  e.preventDefault();
   sel = i;
   const s = cur.slots[i];
-  if (!s.photo) { renderPreview(); return; }
-  s.zoom = clamp(s.zoom * (e.deltaY < 0 ? 1.05 : 1 / 1.05), 1, 4);
+  if (s.photo) s.zoom = clamp(s.zoom * (e.deltaY < 0 ? 1.05 : 1 / 1.05), 1, 4);
   renderPreview();
 }, { passive: false });
 
-// Kéo ảnh từ máy vào ô
 canvas.addEventListener("dragover", e => e.preventDefault());
 canvas.addEventListener("drop", e => {
   e.preventDefault();
   if (!cur) return;
   const f = e.dataTransfer.files[0];
   const p = toFrame(e), i = hit(p.x, p.y);
-  const target = i >= 0 ? i : firstEmpty();
-  putPhoto(f, target);
+  putPhoto(f, cur, i >= 0 ? i : cur.slots.findIndex(s => !s.photo));
 });
 
 // ----- Thanh chỉnh -----
-function bind(id, key) {
-  $(id).oninput = e => {
-    const s = curSlot();
-    if (!s || !s.photo) return;
-    s[key] = +e.target.value;
-    renderPreview();
-  };
-}
-bind("zoom", "zoom");
-bind("rot", "rot");
+$("zoom").oninput = e => { const s = curSlot(); if (s && s.photo) { s.zoom = +e.target.value; renderPreview(); } };
+$("rot").oninput = e => { const s = curSlot(); if (s && s.photo) { s.rot = +e.target.value; renderPreview(); } };
+$("flipBtn").onclick = () => { const s = curSlot(); if (s) { s.flip = !s.flip; renderPreview(); } };
+$("resetBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, RESET); renderPreview(); } };
+$("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null }, RESET); renderPreview(); } };
+$("editAgain").onclick = () => $("ghep").scrollIntoView({ behavior: "smooth", block: "start" });
 
-$("flipBtn").onclick = () => {
-  const s = curSlot();
-  if (!s) return;
-  s.flip = !s.flip;
-  renderPreview();
-};
-
-$("resetBtn").onclick = () => {
-  const s = curSlot();
-  if (!s) return;
-  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false });
-  renderPreview();
-};
-
-$("clearBtn").onclick = () => {
-  const s = curSlot();
-  if (!s) return;
-  s.photo = null;
-  Object.assign(s, { zoom: 1, rot: 0, px: 0, py: 0, flip: false });
-  renderPreview();
-};
-
-// ----- Tải bản in (PNG, gắn 300 dpi) -----
+// ----- Tải bản in A4 (PNG, gắn 300 dpi) -----
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -439,24 +472,26 @@ async function withDpi(blob, dpi) {
   return new Blob([out], { type: "image/png" });
 }
 
-$("download").onclick = () => {
-  if (!cur) return;
+function downloadSheet() {
+  if (!set) return;
   const off = document.createElement("canvas");
-  off.width = cur.FW;
-  off.height = cur.FH;
-  draw(off.getContext("2d"), 1, false);
-  $("hint").textContent = "Đang tạo bản in…";
+  off.width = set.sheet.w;
+  off.height = set.sheet.h;
+  drawSheet(off.getContext("2d"), 1);
+  $("hint").textContent = "Đang tạo bản in A4…";
   off.toBlob(async blob => {
-    const file = await withDpi(blob, 300);
+    const file = await withDpi(blob, DPI);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(file);
-    a.download = `TUNIA-${curId}.png`;
+    a.download = `TUNIA-${set.id}-A4.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     syncControls();
   }, "image/png");
-};
+}
+$("download").onclick = downloadSheet;
+$("download2").onclick = downloadSheet;
 
 init();
