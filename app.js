@@ -46,7 +46,7 @@ function loadPhoto(file) {
 
 // Tìm các vùng trong suốt nằm bên trong khung (không chạm mép ảnh) => danh sách ô
 function detectSlots(img, FW, FH) {
-  const sc = Math.min(1, 2000 / Math.max(FW, FH));
+  const sc = Math.min(1, 2600 / Math.max(FW, FH));
   const w = Math.round(FW * sc), h = Math.round(FH * sc), n = w * h;
   const tmp = document.createElement("canvas");
   tmp.width = w; tmp.height = h;
@@ -80,7 +80,7 @@ function detectSlots(img, FW, FH) {
       if (py > 0     && open[p - w] && !seen[p - w]) { seen[p - w] = 1; stack[sp++] = p - w; }
       if (py < h - 1 && open[p + w] && !seen[p + w]) { seen[p + w] = 1; stack[sp++] = p + w; }
     }
-    if (!touch && area > n * 0.002) {
+    if (!touch && area > n * 0.0005) {
       boxes.push({ x: x0 / sc, y: y0 / sc, w: (x1 - x0 + 1) / sc, h: (y1 - y0 + 1) / sc });
     }
   }
@@ -246,7 +246,7 @@ function syncControls() {
   const on = !!(s && s.photo);
   ["zoom", "rot", "sat", "flipBtn", "resetBtn", "clearBtn"]
     .forEach(id => $(id).disabled = !on);
-  $("download").disabled = !(cur && cur.slots.some(x => x.photo));
+  $("download").disabled = !(cur && cur.slots.length && cur.slots.every(x => x.photo));
   if (on) {
     $("zoom").value = s.zoom;
     $("rot").value = s.rot;
@@ -261,7 +261,9 @@ function syncControls() {
   const filled = cur.slots.filter(x => x.photo).length;
   $("hint").textContent = total === 0
     ? "Khung này không có ô trong suốt. Kiểm tra lại file PNG."
-    : `Đã thêm ${filled}/${total} ảnh. Bấm vào ô để chọn, kéo ảnh để căn vị trí. Shoot · Print · Keep.`;
+    : filled < total
+      ? `Đã thêm ${filled}/${total} ảnh. Còn ${total - filled} ô trống — thêm đủ để tải bản in A4.`
+      : `Đã đủ ${total}/${total} ảnh. Căn chỉnh xong thì bấm "Tải bản in A4". Shoot · Print · Keep.`;
 }
 
 // ----- Đưa ảnh vào ô -----
@@ -289,6 +291,17 @@ fileInput.onchange = () => {
   const f = fileInput.files[0];
   fileInput.value = "";
   if (f && sel >= 0) putPhoto(f, sel);
+};
+
+$("fileMulti").onchange = async () => {
+  const files = [...$("fileMulti").files].filter(f => f.type.startsWith("image/"));
+  $("fileMulti").value = "";
+  if (!cur) return;
+  for (const f of files) {
+    const i = firstEmpty();
+    if (i < 0) break;
+    await putPhoto(f, i);
+  }
 };
 
 // ----- Chuột / cảm ứng -----
@@ -397,21 +410,56 @@ $("clearBtn").onclick = () => {
   renderPreview();
 };
 
-// ----- Tải khung đã ghép về máy -----
+// ----- Tải bản in (PNG, gắn 300 dpi) -----
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+// Chèn khối pHYs (độ phân giải) ngay sau IHDR của file PNG
+async function withDpi(blob, dpi) {
+  const src = new Uint8Array(await blob.arrayBuffer());
+  const ppm = Math.round(dpi / 0.0254);
+  const chunk = new Uint8Array(21);
+  const dv = new DataView(chunk.buffer);
+  dv.setUint32(0, 9);
+  chunk.set([0x70, 0x48, 0x59, 0x73], 4);   // "pHYs"
+  dv.setUint32(8, ppm); dv.setUint32(12, ppm); chunk[16] = 1;
+  dv.setUint32(17, crc32(chunk.subarray(4, 17)));
+  const at = 33;                              // 8 byte chữ ký + 25 byte IHDR
+  const out = new Uint8Array(src.length + 21);
+  out.set(src.subarray(0, at), 0);
+  out.set(chunk, at);
+  out.set(src.subarray(at), at + 21);
+  return new Blob([out], { type: "image/png" });
+}
+
 $("download").onclick = () => {
   if (!cur) return;
   const off = document.createElement("canvas");
   off.width = cur.FW;
   off.height = cur.FH;
   draw(off.getContext("2d"), 1, false);
-  off.toBlob(blob => {
+  $("hint").textContent = "Đang tạo bản in…";
+  off.toBlob(async blob => {
+    const file = await withDpi(blob, 300);
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${curId}-ghep-anh.png`;
+    a.href = URL.createObjectURL(file);
+    a.download = `TUNIA-${curId}.png`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    syncControls();
   }, "image/png");
 };
 

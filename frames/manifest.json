@@ -1,27 +1,7 @@
 [
   {
-    "id": "leopard-1",
-    "name": "Leopard · Collage 4 ô",
-    "file": "leopard-1.png"
-  },
-  {
-    "id": "leopard-2",
-    "name": "Leopard · 3 ô ngang",
-    "file": "leopard-2.png"
-  },
-  {
-    "id": "leopard-3",
-    "name": "Leopard · Dải 3 ô",
-    "file": "leopard-3.png"
-  },
-  {
-    "id": "leopard-4",
-    "name": "Leopard · 2 ô dọc",
-    "file": "leopard-4.png"
-  },
-  {
-    "id": "leopard-5",
-    "name": "Leopard · Polaroid 2 ô",
-    "file": "leopard-5.png"
+    "id": "bo-leopard-a4",
+    "name": "Bộ Leopard · A4 (14 ô)",
+    "file": "bo-leopard-a4.png"
   }
 ]
