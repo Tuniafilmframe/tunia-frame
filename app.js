@@ -9,8 +9,9 @@ const ctx = canvas.getContext("2d");
 const fileInput = $("file");
 
 const PREVIEW_MAX = 1400;  // cạnh ngang tối đa của khung đang ghép
-const PHOTO_MAX = 2400;    // thu nhỏ ảnh khách trước khi dùng (vẫn dư cho in 300 dpi)
+const PHOTO_MAX = 1600;    // bản xem trước cho mượt; khi in sẽ đọc lại ảnh gốc
 const DPI = 300;
+const MIN_PRINT_DPI = 150;  // dưới mức này: cảnh báo ảnh có thể mờ khi in
 
 let set = null;            // bộ khung đang dùng (từ manifest)
 let entries = [];          // [{ meta, img, FW, FH, slots }]
@@ -39,8 +40,10 @@ function loadPhoto(file) {
       const c = document.createElement("canvas");
       c.width = Math.round(im.naturalWidth * k);
       c.height = Math.round(im.naturalHeight * k);
-      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-      res(c);
+      const g = c.getContext("2d");
+      g.imageSmoothingQuality = "high";
+      g.drawImage(im, 0, 0, c.width, c.height);
+      res({ preview: c, ow: im.naturalWidth, oh: im.naturalHeight });
     };
     im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("File này không phải ảnh hợp lệ.")); };
     im.src = url;
@@ -90,7 +93,7 @@ function detectSlots(img, FW, FH) {
   return boxes;
 }
 
-const blankSlot = b => ({ ...b, photo: null, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
+const blankSlot = b => ({ ...b, photo: null, file: null, ow: 0, oh: 0, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
 const RESET = { zoom: 1, rot: 0, px: 0, py: 0, flip: false };
 
 // ----- Tải bộ khung -----
@@ -192,8 +195,9 @@ function clampSlot(s) {
 }
 
 // ----- Vẽ -----
-function drawPhoto(c, s) {
+function drawPhoto(c, s, src) {
   const S = clampSlot(s);
+  src = src || s.photo;
   c.save();
   c.beginPath();
   c.rect(s.x, s.y, s.w, s.h);
@@ -201,9 +205,18 @@ function drawPhoto(c, s) {
   c.translate(s.x + s.w / 2 + s.px, s.y + s.h / 2 + s.py);
   c.rotate(s.rot * Math.PI / 180);
   c.scale(s.flip ? -1 : 1, 1);
-  const pw = s.photo.width, ph = s.photo.height;
-  c.drawImage(s.photo, -pw * S / 2, -ph * S / 2, pw * S, ph * S);
+  const dw = s.photo.width * S, dh = s.photo.height * S;   // kích thước hiển thị (đơn vị khung)
+  c.imageSmoothingEnabled = true;
+  c.imageSmoothingQuality = "high";
+  c.drawImage(src, -dw / 2, -dh / 2, dw, dh);
   c.restore();
+}
+
+// Độ phân giải in thực tế của ảnh trong ô (dpi), dựa trên ảnh gốc
+function slotDpi(s) {
+  if (!s.photo || !s.ow) return Infinity;
+  const dw = s.photo.width * clampSlot(s);   // số pixel khung (300 dpi) mà ảnh chiếm
+  return s.ow / dw * DPI;
 }
 
 function drawOverlay(c, e, s, i, active) {
@@ -227,32 +240,44 @@ function drawOverlay(c, e, s, i, active) {
     c.fillText(`Ô ${i + 1}`, cx, cy - fs * 0.4);
     c.font = `${fs * 0.4}px "Be Vietnam Pro", system-ui, sans-serif`;
     c.fillText("Bấm để thêm ảnh", cx, cy + fs * 0.4);
+  } else if (slotDpi(s) < MIN_PRINT_DPI) {
+    const t = Math.max(fs * 0.38, 12);
+    c.font = `600 ${t}px "Be Vietnam Pro", system-ui, sans-serif`;
+    const label = "Ảnh có thể mờ khi in";
+    const tw = c.measureText(label).width + t * 1.2;
+    c.fillStyle = "rgba(122,59,46,0.92)";
+    c.fillRect(s.x + t * 0.5, s.y + t * 0.5, tw, t * 1.7);
+    c.fillStyle = "#F1ECE1";
+    c.textAlign = "left";
+    c.textBaseline = "middle";
+    c.fillText(label, s.x + t * 1.1, s.y + t * 1.35);
   }
   c.restore();
 }
 
 // Vẽ một khung (ảnh + khung) tại vị trí (ox, oy) với tỉ lệ k, không xóa nền.
-function drawEntry(c, e, k, ox, oy, preview) {
+function drawEntry(c, e, k, ox, oy, preview, sources) {
   c.setTransform(k, 0, 0, k, ox * k, oy * k);
-  e.slots.forEach(s => { if (s.photo) drawPhoto(c, s); });
+  e.slots.forEach(s => { if (s.photo) drawPhoto(c, s, sources && sources.get(s)); });
   c.drawImage(e.img, 0, 0, e.FW, e.FH);
   if (preview) e.slots.forEach((s, i) => drawOverlay(c, e, s, i, e === cur && i === sel));
   c.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 // Ghép cả bộ lên tấm A4. k = tỉ lệ so với kích thước in thật.
-function drawSheet(c, k) {
+function drawSheet(c, k, sources) {
   const sh = set.sheet;
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.fillStyle = sh.bg || "#ffffff";
   c.fillRect(0, 0, c.canvas.width, c.canvas.height);
-  entries.forEach(e => drawEntry(c, e, k, e.meta.x, e.meta.y, false));
+  entries.forEach(e => drawEntry(c, e, k, e.meta.x, e.meta.y, false, sources));
 }
 
 function renderPreview() {
   if (!cur) return;
   canvas.width = Math.round(cur.FW * K);
   canvas.height = Math.round(cur.FH * K);
+  ctx.imageSmoothingQuality = "high";
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawEntry(ctx, cur, K, 0, 0, true);
   syncControls();
@@ -317,23 +342,25 @@ function syncControls() {
 
   const { filled, total } = totals();
   const here = cur.slots.filter(x => x.photo).length;
+  const blurry = s && s.photo && slotDpi(s) < MIN_PRINT_DPI;
   $("progress").textContent = `${filled}/${total} ảnh`;
   $("hint").textContent = filled === total
     ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”."
     : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô để chọn, kéo ảnh để căn vị trí.`;
+  if (blurry) $("hint").textContent = `Ảnh ở ô này hơi nhỏ (khoảng ${Math.round(slotDpi(s))} dpi) nên in ra có thể mờ. Hãy thu nhỏ lại hoặc chọn ảnh gốc rõ hơn.`;
 }
 
 // ----- Đưa ảnh vào ô -----
 async function putPhoto(file, e, i) {
   if (!file || !file.type.startsWith("image/") || !e || i < 0) return;
-  let photo;
+  let loaded;
   try {
-    photo = await loadPhoto(file);
+    loaded = await loadPhoto(file);
   } catch (err) {
     $("hint").textContent = err.message;
     return;
   }
-  Object.assign(e.slots[i], { photo }, RESET);
+  Object.assign(e.slots[i], { photo: loaded.preview, file, ow: loaded.ow, oh: loaded.oh }, RESET);
   if (e === cur) sel = i;
   renderPreview();
 }
@@ -516,7 +543,7 @@ $("zoom").oninput = e => { const s = curSlot(); if (s && s.photo) { s.zoom = +e.
 $("rot").oninput = e => { const s = curSlot(); if (s && s.photo) { s.rot = +e.target.value; renderPreview(); } };
 $("flipBtn").onclick = () => { const s = curSlot(); if (s) { s.flip = !s.flip; renderPreview(); } };
 $("resetBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, RESET); renderPreview(); } };
-$("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null }, RESET); renderPreview(); } };
+$("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET); renderPreview(); } };
 $("editAgain").onclick = () => $("ghep").scrollIntoView({ behavior: "smooth", block: "start" });
 
 // ----- Tải bản in A4 (PNG, gắn 300 dpi) -----
@@ -552,14 +579,59 @@ async function withDpi(blob, dpi) {
   return new Blob([out], { type: "image/png" });
 }
 
-function downloadSheet() {
+// Thu nhỏ chất lượng cao: giảm một nửa nhiều lần rồi mới về đúng kích thước
+function resizeHQ(src, w, h, tw, th) {
+  while (w / 2 >= tw && h / 2 >= th) {
+    const c = document.createElement("canvas");
+    c.width = Math.round(w / 2); c.height = Math.round(h / 2);
+    const g = c.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.drawImage(src, 0, 0, c.width, c.height);
+    src = c; w = c.width; h = c.height;
+  }
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, tw); c.height = Math.max(1, th);
+  const g = c.getContext("2d");
+  g.imageSmoothingQuality = "high";
+  g.drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+
+// Đọc lại ảnh gốc của khách ở đúng độ phân giải cần cho ô (mỗi lần một ảnh để nhẹ máy)
+async function printSource(s) {
+  if (!s.file) return s.photo;
+  const S = clampSlot(s);
+  const tw = Math.ceil(s.photo.width * S), th = Math.ceil(s.photo.height * S);
+  const url = URL.createObjectURL(s.file);
+  try {
+    const im = await loadImage(url);
+    const W0 = im.naturalWidth, H0 = im.naturalHeight;
+    // ảnh gốc lớn hơn cần: thu nhỏ chuẩn; nhỏ hơn: giữ nguyên toàn bộ điểm ảnh gốc
+    return W0 > tw ? resizeHQ(im, W0, H0, tw, th) : resizeHQ(im, W0, H0, W0, H0);
+  } catch (e) {
+    return s.photo;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function downloadSheet() {
   if (!set) return;
-  const off = document.createElement("canvas");
-  off.width = set.sheet.w;
-  off.height = set.sheet.h;
-  drawSheet(off.getContext("2d"), 1);
-  $("hint").textContent = "Đang tạo bản in A4…";
-  off.toBlob(async blob => {
+  ["download", "download2"].forEach(id => $(id).disabled = true);
+  const slots = [];
+  entries.forEach(e => e.slots.forEach(s => { if (s.photo) slots.push(s); }));
+  try {
+    const sources = new Map();
+    for (let n = 0; n < slots.length; n++) {
+      $("hint").textContent = `Đang tạo bản in A4 chất lượng cao… (${n + 1}/${slots.length})`;
+      sources.set(slots[n], await printSource(slots[n]));
+    }
+    const off = document.createElement("canvas");
+    off.width = set.sheet.w;
+    off.height = set.sheet.h;
+    drawSheet(off.getContext("2d"), 1, sources);
+    sources.clear();
+    const blob = await new Promise(res => off.toBlob(res, "image/png"));
     const file = await withDpi(blob, DPI);
     const a = document.createElement("a");
     a.href = URL.createObjectURL(file);
@@ -567,9 +639,13 @@ function downloadSheet() {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } catch (err) {
+    $("hint").textContent = "Không tạo được bản in, thử lại giúp mình nhé.";
+  } finally {
     syncControls();
-  }, "image/png");
+    updateResult();
+  }
 }
 $("download").onclick = downloadSheet;
 $("download2").onclick = downloadSheet;
