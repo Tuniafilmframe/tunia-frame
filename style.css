@@ -391,3 +391,10 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .result .tool-head { margin-bottom: 0; }
 .result-sheet { max-width: 720px; }
 #sheetBig { width: 100%; height: auto; display: block; background: #fff; }
+
+/* ---------- Tab chọn bộ khung ---------- */
+.set-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.set-tabs[hidden] { display: none; }
+.set-tab { flex: 1 1 auto; padding: 8px 10px; border: 1px solid var(--olive-700); background: transparent; color: var(--olive-700); font-family: var(--font-body); font-weight: 600; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; border-radius: 0; }
+.set-tab:hover { background: var(--linen-200); }
+.set-tab.active { background: var(--olive-700); color: var(--cream-100); }
