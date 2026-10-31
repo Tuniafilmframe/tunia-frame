@@ -19,7 +19,7 @@ let cur = null, sel = -1, K = 1;
 let drag = null;
 let wasComplete = false;
 
-// Điện thoại: mặc định một ngón để cuộn trang; hai ngón để phóng to/xoay/di chuyển ảnh.
+// Điện thoại: mặc định một ngón để cuộn trang; hai ngón để phóng to/thu nhỏ và di chuyển ảnh.
 // Bật "Kéo ảnh" để dùng một ngón di chuyển ảnh (lúc đó khung không cuộn trang được).
 let dragMode = false;
 function setDragMode(on) {
@@ -218,6 +218,7 @@ function detectSlots(img, FW, FH) {
 }
 
 const blankSlot = b => ({ ...b, photo: null, file: null, ow: 0, oh: 0, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
+// Ảnh luôn thẳng: rot luôn bằng 0 (chỉ cho di chuyển và phóng to/thu nhỏ)
 const RESET = { zoom: 1, rot: 0, px: 0, py: 0, flip: false };
 
 // ----- Tải bộ khung -----
@@ -522,13 +523,11 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
+  ["zoom", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
   if (on) {
     $("zoom").value = s.zoom;
-    $("rot").value = s.rot;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
-  $("rotVal").textContent = s ? Math.round(s.rot) + "°" : "";
   updateFrameList();
   updateSetTabs();
 
@@ -605,7 +604,7 @@ function hit(x, y) {
   return best >= 0 ? best : fb;
 }
 
-// Một ngón: kéo ảnh. Hai ngón: chụm/mở để phóng to, xoay hai ngón để xoay, di chuyển để kéo.
+// Một ngón: kéo ảnh. Hai ngón: chụm/mở để thu nhỏ/phóng to, di chuyển hai ngón để kéo ảnh (không xoay).
 const pointers = new Map();   // pointerId -> { x, y }
 let pinch = null;
 
@@ -627,7 +626,7 @@ function startPinch() {
   const s = idx >= 0 ? cur.slots[idx] : null;
   if (!s || !s.photo) { pinch = null; return; }
   if (idx !== sel) sel = idx;
-  pinch = { s, ...st, zoom0: s.zoom, rot0: s.rot };
+  pinch = { s, ...st, zoom0: s.zoom };
 }
 
 canvas.addEventListener("pointerdown", e => {
@@ -655,7 +654,6 @@ canvas.addEventListener("pointermove", e => {
     const s = pinch.s;
     const r = canvas.getBoundingClientRect();
     if (pinch.dist > 0) s.zoom = clamp(pinch.zoom0 * st.dist / pinch.dist, 1, 4);
-    s.rot = Math.round(wrapDeg(pinch.rot0 + (st.ang - pinch.ang) * 180 / Math.PI) * 10) / 10;
     s.px += (st.mx - pinch.mx) * cur.view.w / r.width;
     s.py += (st.my - pinch.my) * cur.view.h / r.height;
     pinch.mx = st.mx; pinch.my = st.my;
@@ -698,20 +696,19 @@ function endPointer(e, cancelled) {
 canvas.addEventListener("pointerup", e => endPointer(e, false));
 canvas.addEventListener("pointercancel", e => endPointer(e, true));
 
-// Bàn di chuột Mac (Safari): chụm/xoay hai ngón
+// Bàn di chuột Mac (Safari): chụm hai ngón để phóng to/thu nhỏ
 let gesture = null;
 canvas.addEventListener("gesturestart", e => {
   if (pointers.size || !cur) return;   // trên điện thoại đã xử lý bằng cảm ứng
   const s = curSlot();
   if (!s || !s.photo) return;
   e.preventDefault();
-  gesture = { s, zoom0: s.zoom, rot0: s.rot };
+  gesture = { s, zoom0: s.zoom };
 });
 canvas.addEventListener("gesturechange", e => {
   if (!gesture) return;
   e.preventDefault();
   gesture.s.zoom = clamp(gesture.zoom0 * e.scale, 1, 4);
-  gesture.s.rot = Math.round(wrapDeg(gesture.rot0 + e.rotation) * 10) / 10;
   renderPreview();
 });
 canvas.addEventListener("gestureend", () => { gesture = null; });
@@ -738,7 +735,6 @@ canvas.addEventListener("drop", e => {
 
 // ----- Thanh chỉnh -----
 $("zoom").oninput = e => { const s = curSlot(); if (s && s.photo) { s.zoom = +e.target.value; renderPreview(); } };
-$("rot").oninput = e => { const s = curSlot(); if (s && s.photo) { s.rot = +e.target.value; renderPreview(); } };
 $("flipBtn").onclick = () => { const s = curSlot(); if (s) { s.flip = !s.flip; renderPreview(); } };
 $("resetBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, RESET); renderPreview(); } };
 $("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET); renderPreview(); } };
