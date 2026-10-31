@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=8" />
+<link rel="stylesheet" href="style.css?v=9" />
 </head>
 <body>
 
@@ -70,6 +70,10 @@
         </div>
       </div>
       <p class="hint" id="hint"></p>
+      <div class="mode-switch" id="modeSwitch" hidden>
+        <button class="mode-btn active" data-mode="scroll">Cuộn trang</button>
+        <button class="mode-btn" data-mode="drag">Kéo ảnh</button>
+      </div>
       <div class="btn-row">
         <label class="btn primary">Thêm nhiều ảnh<input type="file" id="fileMulti" accept="image/*" multiple /></label>
         <label class="btn">Chọn ảnh cho ô đang chọn<input type="file" id="file" accept="image/*" /></label>
@@ -87,7 +91,7 @@
         <button class="btn" id="flipBtn" disabled>Lật ngang</button>
         <button class="btn" id="resetBtn" disabled>Đặt lại ô</button>
       </div>
-      <p class="note">Kéo ảnh trong ô để căn vị trí. Dùng hai ngón tay để phóng to, thu nhỏ hoặc xoay ảnh; trên máy tính có thể lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+      <p class="note">Điện thoại: dùng hai ngón để phóng to, xoay và di chuyển ảnh; bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
       <h3 class="panel-title mini-title">Bản in A4 · xem trước</h3>
       <canvas id="sheetMini" class="sheet-mini"></canvas>
     </aside>
@@ -145,6 +149,6 @@
   <p class="footer-note">Mã QR và thông tin liên hệ là chỗ đặt mẫu, cần thay bằng thông tin thật.</p>
 </footer>
 
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

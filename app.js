@@ -19,6 +19,17 @@ let cur = null, sel = -1, K = 1;
 let drag = null;
 let wasComplete = false;
 
+// Điện thoại: mặc định một ngón để cuộn trang; hai ngón để phóng to/xoay/di chuyển ảnh.
+// Bật "Kéo ảnh" để dùng một ngón di chuyển ảnh (lúc đó khung không cuộn trang được).
+let dragMode = false;
+function setDragMode(on) {
+  dragMode = on;
+  canvas.classList.toggle("drag-mode", on);
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.toggle("active", (b.dataset.mode === "drag") === on));
+}
+document.querySelectorAll(".mode-btn").forEach(b => { b.onclick = () => setDragMode(b.dataset.mode === "drag"); });
+if (matchMedia("(pointer: coarse)").matches || "ontouchstart" in window) $("modeSwitch").hidden = false;
+
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 function loadImage(src) {
@@ -655,7 +666,7 @@ canvas.addEventListener("pointermove", e => {
   if (!drag) return;
   if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true;
   const s = drag.i >= 0 ? cur.slots[drag.i] : null;
-  if (drag.moved && s && s.photo) {
+  if (drag.moved && s && s.photo && (e.pointerType !== "touch" || dragMode)) {
     const r = canvas.getBoundingClientRect();
     s.px += (e.clientX - drag.lx) * cur.view.w / r.width;
     s.py += (e.clientY - drag.ly) * cur.view.h / r.height;
@@ -706,7 +717,7 @@ canvas.addEventListener("gesturechange", e => {
 canvas.addEventListener("gestureend", () => { gesture = null; });
 
 canvas.addEventListener("wheel", e => {
-  if (!cur) return;
+  if (!cur || !(e.ctrlKey || e.metaKey)) return;   // lăn thường: để trang cuộn bình thường
   const p = toFrame(e), i = hit(p.x, p.y);
   if (i < 0) return;
   e.preventDefault();
