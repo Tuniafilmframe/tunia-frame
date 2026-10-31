@@ -218,7 +218,7 @@ function detectSlots(img, FW, FH) {
 }
 
 const blankSlot = b => ({ ...b, photo: null, file: null, ow: 0, oh: 0, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
-// Ảnh luôn thẳng: rot luôn bằng 0 (chỉ cho di chuyển và phóng to/thu nhỏ)
+// Xoay chỉ qua thanh trượt "Xoay"; thao tác chạm/kéo trực tiếp trên ảnh không xoay.
 const RESET = { zoom: 1, rot: 0, px: 0, py: 0, flip: false };
 
 // ----- Tải bộ khung -----
@@ -523,11 +523,13 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
+  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
   if (on) {
     $("zoom").value = s.zoom;
+    $("rot").value = s.rot;
   }
   $("zoomVal").textContent = s ? Math.round(s.zoom * 100) + "%" : "";
+  $("rotVal").textContent = s ? Math.round(s.rot) + "°" : "";
   updateFrameList();
   updateSetTabs();
 
@@ -735,6 +737,7 @@ canvas.addEventListener("drop", e => {
 
 // ----- Thanh chỉnh -----
 $("zoom").oninput = e => { const s = curSlot(); if (s && s.photo) { s.zoom = +e.target.value; renderPreview(); } };
+$("rot").oninput = e => { const s = curSlot(); if (s && s.photo) { s.rot = +e.target.value; renderPreview(); } };
 $("flipBtn").onclick = () => { const s = curSlot(); if (s) { s.flip = !s.flip; renderPreview(); } };
 $("resetBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, RESET); renderPreview(); } };
 $("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET); renderPreview(); } };

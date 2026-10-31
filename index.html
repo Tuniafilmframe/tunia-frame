@@ -86,11 +86,12 @@
     <aside class="panel">
       <h3 class="panel-title">2 · Chỉnh ô đang chọn</h3>
       <div class="ctrl"><label>Phóng to <span id="zoomVal"></span></label><input type="range" id="zoom" min="1" max="4" step="0.01" value="1" disabled /></div>
+      <div class="ctrl"><label>Xoay <span id="rotVal"></span></label><input type="range" id="rot" min="-180" max="180" step="1" value="0" disabled /></div>
       <div class="btn-row">
         <button class="btn" id="flipBtn" disabled>Lật ngang</button>
         <button class="btn" id="resetBtn" disabled>Đặt lại ô</button>
       </div>
-      <p class="note">Điện thoại: dùng hai ngón để phóng to, thu nhỏ và di chuyển ảnh; bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+      <p class="note">Điện thoại: dùng hai ngón để phóng to, thu nhỏ và di chuyển ảnh (muốn xoay thì dùng thanh Xoay); bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
       <h3 class="panel-title mini-title">Bản in A4 · xem trước</h3>
       <canvas id="sheetMini" class="sheet-mini"></canvas>
     </aside>
@@ -148,6 +149,6 @@
   <p class="footer-note">Mã QR và thông tin liên hệ là chỗ đặt mẫu, cần thay bằng thông tin thật.</p>
 </footer>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>
