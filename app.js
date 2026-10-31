@@ -488,6 +488,19 @@ function updateResult() {
     drawSheet(big.getContext("2d"), k);
     if (!wasComplete) $("result").scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  // nút tải riêng từng khung (dưới tấm A4)
+  const row = $("frameDlRow");
+  row.innerHTML = "";
+  if (done) {
+    entries.forEach((e, i) => {
+      const b = document.createElement("button");
+      b.className = "btn frame-dl-btn";
+      b.textContent = `Tải ${e.meta.name}`;
+      b.disabled = exporting;
+      b.onclick = () => downloadFrame(e);
+      row.appendChild(b);
+    });
+  }
   wasComplete = done;
 }
 
@@ -511,10 +524,13 @@ function syncControls() {
   const { filled, total } = totals();
   const here = cur.slots.filter(x => x.photo).length;
   const blurry = s && s.photo && slotDpi(s) < MIN_PRINT_DPI;
+  $("downloadFrame").disabled = exporting || !frameDone(cur);
   $("progress").textContent = `${filled}/${total} ảnh`;
   $("hint").textContent = filled === total
-    ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”."
-    : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô để chọn, kéo ảnh để căn vị trí.`;
+    ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”, hoặc tải riêng từng khung."
+    : frameDone(cur)
+      ? `${cur.meta.name} đã đủ ảnh. Bấm “Tải khung này” để tải riêng, hoặc ghép tiếp các khung còn lại (cả bộ: ${filled}/${total}).`
+      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô để chọn, kéo ảnh để căn vị trí.`;
   if (blurry) $("hint").textContent = `Ảnh ở ô này hơi nhỏ (khoảng ${Math.round(slotDpi(s))} dpi) nên in ra có thể mờ. Hãy thu nhỏ lại hoặc chọn ảnh gốc rõ hơn.`;
 }
 
@@ -786,39 +802,80 @@ async function printSource(s) {
   }
 }
 
-async function downloadSheet() {
-  if (!set) return;
-  ["download", "download2"].forEach(id => $(id).disabled = true);
-  const slots = [];
-  entries.forEach(e => e.slots.forEach(s => { if (s.photo) slots.push(s); }));
+let exporting = false;
+
+// Chuẩn bị ảnh gốc độ phân giải cao cho các ô (mỗi lần một ảnh để nhẹ máy)
+async function prepareSources(slots, label) {
+  const sources = new Map();
+  for (let n = 0; n < slots.length; n++) {
+    $("hint").textContent = `Đang tạo ${label} chất lượng cao… (${n + 1}/${slots.length})`;
+    sources.set(slots[n], await printSource(slots[n]));
+  }
+  return sources;
+}
+
+async function saveCanvasPng(off, filename) {
+  const blob = await new Promise(res => off.toBlob(res, "image/png"));
+  const file = await withDpi(blob, DPI);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+async function runExport(job) {
+  if (exporting) return;
+  exporting = true;
+  document.querySelectorAll("#download, #download2, #downloadFrame, .frame-dl-btn").forEach(b => b.disabled = true);
   try {
-    const sources = new Map();
-    for (let n = 0; n < slots.length; n++) {
-      $("hint").textContent = `Đang tạo bản in A4 chất lượng cao… (${n + 1}/${slots.length})`;
-      sources.set(slots[n], await printSource(slots[n]));
-    }
+    await job();
+  } catch (err) {
+    $("hint").textContent = "Không tạo được file, thử lại giúp mình nhé.";
+  } finally {
+    exporting = false;
+    syncControls();
+    updateResult();
+  }
+}
+
+// Tải cả tấm A4
+function downloadSheet() {
+  if (!set) return;
+  return runExport(async () => {
+    const slots = [];
+    entries.forEach(e => e.slots.forEach(s => { if (s.photo) slots.push(s); }));
+    const sources = await prepareSources(slots, "bản in A4");
     const off = document.createElement("canvas");
     off.width = set.sheet.w;
     off.height = set.sheet.h;
     drawSheet(off.getContext("2d"), 1, sources);
     sources.clear();
-    const blob = await new Promise(res => off.toBlob(res, "image/png"));
-    const file = await withDpi(blob, DPI);
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(file);
-    a.download = `TUNIA-${set.id}-A4.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-  } catch (err) {
-    $("hint").textContent = "Không tạo được bản in, thử lại giúp mình nhé.";
-  } finally {
-    syncControls();
-    updateResult();
-  }
+    await saveCanvasPng(off, `TUNIA-${set.id}-A4.png`);
+  });
 }
+
+// Tải riêng một khung (đúng kích thước gốc của khung, 300 dpi)
+function downloadFrame(e) {
+  if (!set || !e) return;
+  return runExport(async () => {
+    const slots = e.slots.filter(s => s.photo);
+    const sources = await prepareSources(slots, "khung");
+    const v = e.view;
+    const off = document.createElement("canvas");
+    off.width = v.w;
+    off.height = v.h;
+    drawEntry(off.getContext("2d"), e, 1, -v.x, -v.y, false, sources);
+    sources.clear();
+    await saveCanvasPng(off, `TUNIA-${set.id}-khung${entries.indexOf(e) + 1}.png`);
+  });
+}
+
+const frameDone = e => e.slots.length > 0 && e.slots.every(s => s.photo);
 $("download").onclick = downloadSheet;
 $("download2").onclick = downloadSheet;
+$("downloadFrame").onclick = () => downloadFrame(cur);
 
 init();

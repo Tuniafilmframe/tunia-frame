@@ -398,3 +398,8 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .set-tab { flex: 1 1 auto; padding: 8px 10px; border: 1px solid var(--olive-700); background: transparent; color: var(--olive-700); font-family: var(--font-body); font-weight: 600; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; border-radius: 0; }
 .set-tab:hover { background: var(--linen-200); }
 .set-tab.active { background: var(--olive-700); color: var(--cream-100); }
+
+/* ---------- Tải riêng từng khung ---------- */
+.frame-dl { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line-soft); width: 100%; max-width: 720px; }
+.frame-dl .label-caps { color: var(--moss-500); }
+.frame-dl-btn { font-size: 12px; padding: 10px 14px; }

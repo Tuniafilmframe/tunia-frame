@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=7" />
+<link rel="stylesheet" href="style.css?v=8" />
 </head>
 <body>
 
@@ -74,6 +74,7 @@
         <label class="btn primary">Thêm nhiều ảnh<input type="file" id="fileMulti" accept="image/*" multiple /></label>
         <label class="btn">Chọn ảnh cho ô đang chọn<input type="file" id="file" accept="image/*" /></label>
         <button class="btn" id="clearBtn" disabled>Xóa ảnh ô này</button>
+        <button class="btn" id="downloadFrame" disabled>Tải khung này</button>
         <button class="btn primary" id="download" disabled>Tải bản in A4</button>
       </div>
     </section>
@@ -103,6 +104,10 @@
   <div class="btn-row">
     <button class="btn" id="editAgain">Chỉnh lại ảnh</button>
     <button class="btn primary" id="download2" disabled>Tải bản in A4</button>
+  </div>
+  <div class="frame-dl">
+    <p class="label-caps">Hoặc tải riêng từng khung</p>
+    <div class="btn-row" id="frameDlRow"></div>
   </div>
 </section>
 
@@ -140,6 +145,6 @@
   <p class="footer-note">Mã QR và thông tin liên hệ là chỗ đặt mẫu, cần thay bằng thông tin thật.</p>
 </footer>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>
