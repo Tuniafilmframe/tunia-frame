@@ -207,10 +207,17 @@
         },
         {
           "id": "gr-3",
-          "name": "Khung 3 · Lưới 9 ô",
+          "name": "Khung 3 · Lưới (hàng giữa 1 ảnh dài)",
           "file": "gr-3.png",
           "x": 1299,
-          "y": 0
+          "y": 0,
+          "groups": [
+            [
+              3,
+              4,
+              5
+            ]
+          ]
         },
         {
           "id": "gr-4",

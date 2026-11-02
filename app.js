@@ -255,6 +255,44 @@ function detectSlots(img, FW, FH) {
   return slots;
 }
 
+// Gộp nhiều ô thành MỘT ô: khách chỉ chọn một ảnh, ảnh trải dài qua tất cả các ô,
+// còn các đường kẻ của khung (khoảng giữa các ô) vẫn cắt ngang ảnh. Khai báo trong manifest: "groups": [[3,4,5]]
+function mergeSlots(mem) {
+  const x0 = Math.min(...mem.map(m => m.x)), y0 = Math.min(...mem.map(m => m.y));
+  const x1 = Math.max(...mem.map(m => m.x + m.w)), y1 = Math.max(...mem.map(m => m.y + m.h));
+  const clip = new Path2D();
+  mem.forEach(m => clip.addPath(m.clip));
+  let sw = 0, cx = 0, cy = 0;
+  mem.forEach(m => { const a = m.w * m.h; sw += a; cx += m.cx * a; cy += m.cy * a; });
+  const pick = (pts, score) => pts.reduce((b, p) => (score(p) > score(b) ? p : b));
+  const tr = pick(mem.map(m => [m.ax, m.ay]), p => p[0] - p[1]);
+  const tl = pick(mem.map(m => m.corners.tl), p => -(p[0] + p[1]));
+  const bl = pick(mem.map(m => m.corners.bl), p => p[1] - p[0]);
+  const br = pick(mem.map(m => m.corners.br), p => p[0] + p[1]);
+  const outline = [];
+  mem.forEach(m => {
+    if (!m.isRect) { outline.push(...m.outline); return; }
+    const st = 14;   // ô chữ nhật: rải chấm quanh viền
+    for (let t = 0; t <= m.w; t += st) { outline.push(m.x + t, m.y, m.x + t, m.y + m.h); }
+    for (let t = 0; t <= m.h; t += st) { outline.push(m.x, m.y + t, m.x + m.w, m.y + t); }
+  });
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0, cx: cx / sw, cy: cy / sw, ax: tr[0], ay: tr[1], corners: { tl, bl, br },
+           clip, isRect: false, outline, members: mem, hitmask: null };
+}
+function mergeGroups(slots, groups) {
+  if (!groups || !groups.length) return slots;
+  const drop = new Set(), at = new Map();
+  groups.forEach(g => {
+    const mem = g.map(i => slots[i]).filter(Boolean);
+    if (mem.length < 2) return;
+    at.set(Math.min(...g), mergeSlots(mem));
+    g.forEach(i => drop.add(i));
+  });
+  const out = [];
+  slots.forEach((s, i) => { if (at.has(i)) out.push(at.get(i)); else if (!drop.has(i)) out.push(s); });
+  return out;
+}
+
 const blankSlot = b => ({ ...b, photo: null, file: null, ow: 0, oh: 0, zoom: 1, rot: 0, px: 0, py: 0, flip: false });
 // Xoay chỉ qua thanh trượt "Xoay"; thao tác chạm/kéo trực tiếp trên ảnh không xoay.
 const RESET = { zoom: 1, rot: 0, px: 0, py: 0, flip: false };
@@ -321,7 +359,7 @@ async function loadSet(s) {
         const img = await loadImage("frames/" + meta.file);
         const FW = img.naturalWidth, FH = img.naturalHeight;
         const view = meta.view || { x: 0, y: 0, w: FW, h: FH };   // phần nhìn thấy khi ghép (bỏ lề thừa)
-        return { meta, img, FW, FH, view, slots: detectSlots(img, FW, FH).map(blankSlot) };
+        return { meta, img, FW, FH, view, slots: mergeGroups(detectSlots(img, FW, FH), meta.groups).map(blankSlot) };
       }));
     } catch (e) {
       $("loading").hidden = true;
@@ -466,7 +504,7 @@ function drawOverlay(c, e, s, i, active) {
     c.font = `600 ${fs * 0.6}px "Be Vietnam Pro", system-ui, sans-serif`;
     c.fillText(`Ô ${i + 1}`, cx, cy - fs * 0.4);
     c.font = `${fs * 0.4}px "Be Vietnam Pro", system-ui, sans-serif`;
-    c.fillText("Bấm để thêm ảnh", cx, cy + fs * 0.4);
+    c.fillText(s.members ? `Bấm để thêm 1 ảnh trải dài ${s.members.length} ô` : "Bấm để thêm ảnh", cx, cy + fs * 0.4);
   } else if (s === editSlot) {
     const b = xButton(s);
     c.setLineDash([]);
@@ -687,9 +725,8 @@ function hit(x, y) {
   cur.slots.forEach((s, i) => {
     if (x < s.x || x > s.x + s.w || y < s.y || y > s.y + s.h) return;
     const a = s.w * s.h;
-    const m = s.hitmask;
-    const mx = Math.floor(x * m.sc) - m.x0, my = Math.floor(y * m.sc) - m.y0;
-    if (mx >= 0 && my >= 0 && mx < m.bw && my < m.bh && m.data[my * m.bw + mx]) {
+    const inMask = m => { const mx = Math.floor(x * m.sc) - m.x0, my = Math.floor(y * m.sc) - m.y0; return mx >= 0 && my >= 0 && mx < m.bw && my < m.bh && m.data[my * m.bw + mx] === 1; };
+    if (s.members ? s.members.some(m => inMask(m.hitmask)) : inMask(s.hitmask)) {
       if (a < bestArea) { bestArea = a; best = i; }
     } else if (a < fbArea) { fbArea = a; fb = i; }   // trong khung bao nhưng trúng chữ/hoa văn phủ trên ô
   });
