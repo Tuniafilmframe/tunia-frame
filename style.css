@@ -394,3 +394,19 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
   .qr-box .label-caps { font-size: 9px; letter-spacing: .1em; margin-top: 8px; }
   .qr-sub { font-size: 14px; line-height: 1.2; }
 }
+
+/* ---------- Pop-up khuyên dùng Chrome / Safari ---------- */
+.modal { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(11, 20, 9, .6); }
+.modal[hidden] { display: none; }
+body.modal-open { overflow: hidden; }
+.modal-card {
+  width: 100%; max-width: 460px; max-height: 92vh; overflow: auto;
+  background: var(--cream-100); color: var(--olive-700); padding: 32px 28px 26px; text-align: center;
+  box-shadow: inset 0 0 0 2px var(--olive-700), inset 0 0 0 3px var(--cream-100), inset 0 0 0 4px var(--olive-700);
+}
+.modal-card .label-caps { color: var(--moss-500); margin-bottom: 8px; }
+.modal-title { font-family: var(--font-display); font-weight: 600; font-size: 26px; line-height: 1.2; margin: 0 0 14px; }
+.modal-text { font-size: 15px; line-height: 1.6; margin: 0 0 14px; }
+.modal-warn { font-size: 14px; line-height: 1.55; margin: 0 0 14px; padding: 12px 14px; background: var(--linen-200); border: 1px solid var(--wax-600); color: var(--wax-600); text-align: left; }
+.modal-warn[hidden] { display: none; }
+.modal-card .btn-row { margin-top: 18px; }

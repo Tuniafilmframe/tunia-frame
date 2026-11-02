@@ -17,6 +17,24 @@ let set = null;            // bộ khung đang dùng (từ manifest)
 let entries = [];          // [{ meta, img, FW, FH, slots }]
 let cur = null, sel = -1, K = 1;
 let drag = null;
+let editSlot = null;        // ô có ảnh vừa được bấm vào: hiện dấu X để xóa
+
+// Nút X: kích thước cố định trên màn hình (px CSS) nên đổi sang đơn vị khung theo tỉ lệ hiển thị
+const X_RADIUS_PX = 18;
+const uiScale = () => (cur && canvas.clientWidth) ? cur.view.w / canvas.clientWidth : 1;
+function xButton(s) {
+  const r = X_RADIUS_PX * uiScale();
+  let dx = s.cx - s.ax, dy = s.cy - s.ay;
+  const len = Math.hypot(dx, dy) || 1;
+  dx /= len; dy /= len;
+  return { x: s.ax + dx * r * 1.25, y: s.ay + dy * r * 1.25, r };
+}
+const inX = (s, p) => { const b = xButton(s); return Math.hypot(p.x - b.x, p.y - b.y) <= b.r * 1.35; };
+function removePhoto(s) {
+  Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET);
+  editSlot = null;
+  renderPreview();
+}
 let wasComplete = false;
 
 // Điện thoại: mặc định một ngón để cuộn trang; hai ngón để phóng to/thu nhỏ và di chuyển ảnh.
@@ -156,11 +174,12 @@ function detectSlots(img, FW, FH) {
       if (qy < rh - 1) seed(q + rw);
     }
     const mask = new Uint8Array(rn);
-    let mx0 = rw, my0 = rh, mx1 = 0, my1 = 0, mArea = 0, sx = 0, sy = 0;
+    let mx0 = rw, my0 = rh, mx1 = 0, my1 = 0, mArea = 0, sx = 0, sy = 0, bestAx = -1e9, ax = 0, ay = 0;
     for (let y = 0; y < rh; y++) {
       for (let x = 0; x < rw; x++) {
         if (!outside[y * rw + x]) {
           mask[y * rw + x] = 1; mArea++; sx += x; sy += y;
+          if (x - y > bestAx) { bestAx = x - y; ax = x; ay = y; }   // điểm xa nhất về phía góc trên-phải
           if (x < mx0) mx0 = x;
           if (x > mx1) mx1 = x;
           if (y < my0) my0 = y;
@@ -209,6 +228,7 @@ function detectSlots(img, FW, FH) {
     slots.push({
       x: (rx0 + mx0) / sc, y: (ry0 + my0) / sc, w: bw / sc, h: bh / sc,
       cx: (rx0 + sx / mArea) / sc, cy: (ry0 + sy / mArea) / sc,
+      ax: (rx0 + ax) / sc, ay: (ry0 + ay) / sc,
       clip, isRect, outline,
       hitmask: { x0: rx0 + mx0, y0: ry0 + my0, bw, bh, sc, data: hm },
     });
@@ -294,6 +314,7 @@ async function loadSet(s) {
   if (token !== loadToken) return;      // đã chuyển sang bộ khác trong lúc tải
   entries = setCache[s.id];
   cur = null;
+  editSlot = null;
   wasComplete = isComplete();           // không tự cuộn xuống khi chỉ đổi bộ
   renderFrameList();
   const firstOpen = entries.findIndex(e => e.slots.some(x => !x.photo));
@@ -342,6 +363,7 @@ function updateFrameList() {
 
 function selectFrame(i) {
   cur = entries[i];
+  editSlot = null;
   K = Math.min(1, PREVIEW_MAX / cur.view.w);
   sel = cur.slots.findIndex(s => !s.photo);
   if (sel < 0) sel = cur.slots.length ? 0 : -1;
@@ -419,7 +441,25 @@ function drawOverlay(c, e, s, i, active) {
     c.fillText(`Ô ${i + 1}`, cx, cy - fs * 0.4);
     c.font = `${fs * 0.4}px "Be Vietnam Pro", system-ui, sans-serif`;
     c.fillText("Bấm để thêm ảnh", cx, cy + fs * 0.4);
-  } else if (slotDpi(s) < MIN_PRINT_DPI) {
+  } else if (s === editSlot) {
+    const b = xButton(s);
+    c.setLineDash([]);
+    c.beginPath();
+    c.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    c.fillStyle = "rgba(61,69,48,0.94)";
+    c.fill();
+    c.lineWidth = Math.max(1.5 * uiScale(), b.r * 0.08);
+    c.strokeStyle = "#F1ECE1";
+    c.stroke();
+    const k = b.r * 0.38;
+    c.lineWidth = b.r * 0.16;
+    c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(b.x - k, b.y - k); c.lineTo(b.x + k, b.y + k);
+    c.moveTo(b.x + k, b.y - k); c.lineTo(b.x - k, b.y + k);
+    c.stroke();
+  }
+  if (s.photo && s !== editSlot && slotDpi(s) < MIN_PRINT_DPI) {
     const t = Math.max(fs * 0.38, 12);
     c.font = `600 ${t}px "Be Vietnam Pro", system-ui, sans-serif`;
     const label = "Ảnh có thể mờ khi in";
@@ -523,7 +563,7 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
-  ["zoom", "rot", "flipBtn", "resetBtn", "clearBtn"].forEach(id => $(id).disabled = !on);
+  ["zoom", "rot", "flipBtn", "resetBtn"].forEach(id => $(id).disabled = !on);
   if (on) {
     $("zoom").value = s.zoom;
     $("rot").value = s.rot;
@@ -542,7 +582,7 @@ function syncControls() {
     ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”, hoặc tải riêng từng khung."
     : frameDone(cur)
       ? `${cur.meta.name} đã đủ ảnh. Bấm “Tải khung này” để tải riêng, hoặc ghép tiếp các khung còn lại (cả bộ: ${filled}/${total}).`
-      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô để chọn, kéo ảnh để căn vị trí.`;
+      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô trống để thêm ảnh; bấm vào ảnh để chỉnh hoặc xóa (dấu X).`;
   if (blurry) $("hint").textContent = `Ảnh ở ô này hơi nhỏ (khoảng ${Math.round(slotDpi(s))} dpi) nên in ra có thể mờ. Hãy thu nhỏ lại hoặc chọn ảnh gốc rõ hơn.`;
 }
 
@@ -636,9 +676,18 @@ canvas.addEventListener("pointerdown", e => {
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   canvas.setPointerCapture(e.pointerId);
   if (pointers.size === 1) {
-    const p = toFrame(e), i = hit(p.x, p.y);
+    const p = toFrame(e);
+    if (editSlot && editSlot.photo && inX(editSlot, p)) {          // bấm đúng dấu X
+      drag = { i: -1, xbtn: editSlot, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+      return;
+    }
+    const i = hit(p.x, p.y);
     drag = { i, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
-    if (i >= 0 && i !== sel) { sel = i; renderPreview(); }
+    const next = i >= 0 && cur.slots[i].photo ? cur.slots[i] : null;  // bấm vào ảnh: hiện X
+    const changed = next !== editSlot || (i >= 0 && i !== sel);
+    editSlot = next;
+    if (i >= 0) sel = i;
+    if (changed) renderPreview();
   } else if (pointers.size === 2) {
     if (drag) drag.moved = true;   // không coi là bấm để mở chọn ảnh
     startPinch();
@@ -687,7 +736,9 @@ function endPointer(e, cancelled) {
     return;
   }
   if (pointers.size === 0) {
-    if (!cancelled && drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
+    if (!cancelled && drag && drag.xbtn && !drag.moved && inX(drag.xbtn, toFrame({ clientX: drag.lx, clientY: drag.ly }))) {
+      removePhoto(drag.xbtn);                                     // thả tay trên dấu X: xóa ảnh
+    } else if (!cancelled && drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
       sel = drag.i;
       fileInput.click();  // bấm vào ô trống => mở chọn ảnh
     }
@@ -740,7 +791,6 @@ $("zoom").oninput = e => { const s = curSlot(); if (s && s.photo) { s.zoom = +e.
 $("rot").oninput = e => { const s = curSlot(); if (s && s.photo) { s.rot = +e.target.value; renderPreview(); } };
 $("flipBtn").onclick = () => { const s = curSlot(); if (s) { s.flip = !s.flip; renderPreview(); } };
 $("resetBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, RESET); renderPreview(); } };
-$("clearBtn").onclick = () => { const s = curSlot(); if (s) { Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET); renderPreview(); } };
 $("editAgain").onclick = () => $("ghep").scrollIntoView({ behavior: "smooth", block: "start" });
 
 // ----- Tải bản in A4 (PNG, gắn 300 dpi) -----
@@ -887,5 +937,46 @@ const frameDone = e => e.slots.length > 0 && e.slots.every(s => s.photo);
 $("download").onclick = downloadSheet;
 $("download2").onclick = downloadSheet;
 $("downloadFrame").onclick = () => downloadFrame(cur);
+
+// ----- Pop-up: khuyên dùng Chrome hoặc Safari để lưu được ảnh -----
+(function browserTip() {
+  const modal = $("browserModal");
+  if (!modal) return;
+  let seen = false;
+  try { seen = sessionStorage.getItem("tunia-browser-tip") === "1"; } catch (e) {}
+  if (seen) return;
+  const ua = navigator.userAgent || "";
+  const apps = [[/Zalo/i, "Zalo"], [/FBAN|FBAV|FB_IAB|FBIOS/i, "Facebook"], [/Messenger/i, "Messenger"], [/Instagram/i, "Instagram"],
+                [/Line\//i, "LINE"], [/MicroMessenger/i, "WeChat"], [/TikTok|musical_ly|BytedanceWebview/i, "TikTok"]];
+  const found = apps.find(([re]) => re.test(ua));
+  if (found) { $("bmWarn").hidden = false; $("bmApp").textContent = found[1]; }
+  const close = () => {
+    modal.hidden = true;
+    document.body.classList.remove("modal-open");
+    try { sessionStorage.setItem("tunia-browser-tip", "1"); } catch (e) {}
+    document.removeEventListener("keydown", onKey);
+  };
+  const onKey = e => { if (e.key === "Escape") close(); };
+  $("bmOk").onclick = close;
+  modal.addEventListener("click", e => { if (e.target === modal) close(); });
+  $("bmCopy").onclick = async () => {
+    const url = location.href.split("#")[0];
+    let ok = false;
+    try { await navigator.clipboard.writeText(url); ok = true; } catch (e) {
+      const t = document.createElement("textarea");
+      t.value = url; t.style.position = "fixed"; t.style.opacity = "0";
+      document.body.appendChild(t); t.select();
+      try { ok = document.execCommand("copy"); } catch (e2) {}
+      t.remove();
+    }
+    $("bmCopy").textContent = ok ? "Đã sao chép ✓" : url;
+  };
+  setTimeout(() => {
+    modal.hidden = false;
+    document.body.classList.add("modal-open");
+    document.addEventListener("keydown", onKey);
+    $("bmOk").focus();
+  }, 500);
+})();
 
 init();

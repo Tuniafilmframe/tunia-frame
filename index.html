@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=12" />
+<link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body>
 
@@ -78,7 +78,6 @@
       <div class="btn-row">
         <label class="btn primary">Thêm nhiều ảnh<input type="file" id="fileMulti" accept="image/*" multiple /></label>
         <label class="btn">Chọn ảnh cho ô đang chọn<input type="file" id="file" accept="image/*" /></label>
-        <button class="btn" id="clearBtn" disabled>Xóa ảnh ô này</button>
         <button class="btn" id="downloadFrame" disabled>Tải khung này</button>
         <button class="btn primary" id="download" disabled>Tải bản in A4</button>
       </div>
@@ -92,7 +91,7 @@
         <button class="btn" id="flipBtn" disabled>Lật ngang</button>
         <button class="btn" id="resetBtn" disabled>Đặt lại ô</button>
       </div>
-      <p class="note">Điện thoại: dùng hai ngón để phóng to, thu nhỏ và di chuyển ảnh (muốn xoay thì dùng thanh Xoay); bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+      <p class="note">Bấm vào ảnh trong khung để chỉnh; dấu X hiện ra, bấm X để xóa ảnh đó. Điện thoại: dùng hai ngón để phóng to, thu nhỏ và di chuyển ảnh (muốn xoay thì dùng thanh Xoay); bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
       <h3 class="panel-title mini-title">Bản in A4 · xem trước</h3>
       <canvas id="sheetMini" class="sheet-mini"></canvas>
     </aside>
@@ -191,6 +190,19 @@
   <p class="footer-note">✦ &nbsp; PHOTOBOOTH / SELFBOOTH / MEMORIES FOREVER &nbsp; ✦</p>
 </footer>
 
-<script src="app.js?v=15"></script>
+<div class="modal" id="browserModal" role="dialog" aria-modal="true" aria-labelledby="bmTitle" hidden>
+  <div class="modal-card">
+    <p class="label-caps">Lưu ý nhỏ</p>
+    <h2 class="modal-title" id="bmTitle">Mở bằng Chrome hoặc Safari</h2>
+    <p class="modal-text">Để tải ảnh về máy được, bạn nên dùng <strong>Chrome</strong> (Android, máy tính) hoặc <strong>Safari</strong> (iPhone, iPad, Mac). Trình duyệt bên trong một số ứng dụng như Zalo, Facebook, Messenger, Instagram thường không cho lưu ảnh.</p>
+    <p class="modal-warn" id="bmWarn" hidden>Có vẻ bạn đang mở trong <strong id="bmApp"></strong>. Hãy chọn “Mở bằng trình duyệt” (thường ở góc trên phải), hoặc bấm “Sao chép liên kết” rồi dán vào Chrome/Safari.</p>
+    <div class="btn-row">
+      <button class="btn" id="bmCopy" type="button">Sao chép liên kết</button>
+      <button class="btn primary" id="bmOk" type="button">Đã hiểu</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js?v=17"></script>
 </body>
 </html>
