@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=18" />
+<link rel="stylesheet" href="style.css?v=19" />
 </head>
 <body>
 
@@ -107,6 +107,7 @@
   <div class="btn-row">
     <button class="btn" id="editAgain">Chỉnh lại ảnh</button>
     <button class="btn primary" id="download2" disabled>Tải bản in A4</button>
+    <button class="btn primary" id="sendShop">Gửi cho tiệm in</button>
   </div>
   <div class="frame-dl">
     <p class="label-caps">Hoặc tải riêng từng khung</p>
@@ -202,6 +203,38 @@
   </div>
 </div>
 
-<script src="app.js?v=22"></script>
+<div class="modal" id="sendModal" role="dialog" aria-modal="true" aria-labelledby="sendTitle" hidden>
+  <div class="modal-card send-card">
+    <p class="label-caps">Gửi ảnh in</p>
+    <h2 class="modal-title" id="sendTitle">Gửi cho tiệm in</h2>
+
+    <div id="sendTick" class="send-tick" hidden><span>✓</span></div>
+    <p class="modal-text" id="sendIntro">Ảnh A4 của bạn sẽ được gửi thẳng tới máy tính của tiệm qua Wi-Fi. Hãy <strong>nối Wi-Fi của tiệm</strong> trước khi gửi.</p>
+
+    <div class="send-form" id="sendForm">
+      <label for="sendName">Tên hoặc số điện thoại của bạn</label>
+      <input id="sendName" type="text" maxlength="80" autocomplete="name" placeholder="Ví dụ: Mai / 09xx xxx xxx" />
+      <label for="sendNote">Ghi chú cho tiệm (không bắt buộc)</label>
+      <input id="sendNote" type="text" maxlength="300" placeholder="Ví dụ: in 2 bản" />
+      <label for="sendAddr">Địa chỉ máy tính của tiệm</label>
+      <input id="sendAddr" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="192.168.1.50:8765" />
+      <p class="send-hint">Hiện trên màn hình máy tính tiệm, hoặc quét mã QR tại quầy một lần là web tự nhớ.</p>
+      <p class="send-hint err" id="sendAddrErr"></p>
+    </div>
+
+    <div class="send-spin" id="sendSpin" hidden></div>
+    <div class="send-bar" id="sendBar"><i id="sendBarFill"></i></div>
+    <p class="send-status" id="sendStatus"></p>
+
+    <div class="btn-row">
+      <button class="btn" id="sendCancel" type="button">Hủy</button>
+      <button class="btn primary" id="sendGo" type="button" disabled>Gửi cho tiệm</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js?v=23"></script>
+<script src="send.js?v=1"></script>
 </body>
 </html>

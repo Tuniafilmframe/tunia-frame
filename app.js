@@ -952,18 +952,31 @@ async function printSource(s) {
 let exporting = false;
 
 // Chuẩn bị ảnh gốc độ phân giải cao cho các ô (mỗi lần một ảnh để nhẹ máy)
-async function prepareSources(slots, label) {
+async function prepareSources(slots, label, onProgress) {
   const sources = new Map();
   for (let n = 0; n < slots.length; n++) {
-    $("hint").textContent = `Đang tạo ${label} chất lượng cao… (${n + 1}/${slots.length})`;
+    if (onProgress) onProgress(n + 1, slots.length);
+    else $("hint").textContent = `Đang tạo ${label} chất lượng cao… (${n + 1}/${slots.length})`;
     sources.set(slots[n], await printSource(slots[n]));
   }
   return sources;
 }
 
-async function saveCanvasPng(off, filename) {
+// Dựng tấm A4 hoàn chỉnh thành file PNG 300 dpi (dùng chung cho nút tải và nút gửi cho tiệm)
+async function buildSheetBlob(onProgress) {
+  const slots = [];
+  entries.forEach(e => e.slots.forEach(s => { if (s.photo) slots.push(s); }));
+  const sources = await prepareSources(slots, "bản in A4", onProgress);
+  const off = document.createElement("canvas");
+  off.width = set.sheet.w;
+  off.height = set.sheet.h;
+  drawSheet(off.getContext("2d"), 1, sources);
+  sources.clear();
   const blob = await new Promise(res => off.toBlob(res, "image/png"));
-  const file = await withDpi(blob, DPI);
+  return withDpi(blob, DPI);
+}
+
+function saveBlob(file, filename) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(file);
   a.download = filename;
@@ -971,6 +984,11 @@ async function saveCanvasPng(off, filename) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+}
+
+async function saveCanvasPng(off, filename) {
+  const blob = await new Promise(res => off.toBlob(res, "image/png"));
+  saveBlob(await withDpi(blob, DPI), filename);
 }
 
 async function runExport(job) {
@@ -992,15 +1010,7 @@ async function runExport(job) {
 function downloadSheet() {
   if (!set) return;
   return runExport(async () => {
-    const slots = [];
-    entries.forEach(e => e.slots.forEach(s => { if (s.photo) slots.push(s); }));
-    const sources = await prepareSources(slots, "bản in A4");
-    const off = document.createElement("canvas");
-    off.width = set.sheet.w;
-    off.height = set.sheet.h;
-    drawSheet(off.getContext("2d"), 1, sources);
-    sources.clear();
-    await saveCanvasPng(off, `TUNIA-${set.id}-A4.png`);
+    saveBlob(await buildSheetBlob(), `TUNIA-${set.id}-A4.png`);
   });
 }
 

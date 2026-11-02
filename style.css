@@ -543,3 +543,24 @@ body.modal-open { overflow: hidden; }
   .banner-sm { font-size: 14px; }
   .set-tab { font-size: 9.5px; letter-spacing: .05em; }
 }
+
+/* ---------- Gửi cho tiệm in ---------- */
+.send-card { max-width: 480px; }
+.send-form { text-align: left; margin-top: 4px; }
+.send-form label { display: block; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; margin: 14px 0 6px; }
+.send-form input { width: 100%; padding: 12px; border: 1px solid var(--line-soft); background: #fff; font: inherit; font-size: 16px; color: var(--olive-700); border-radius: 0; }
+.send-form input:disabled { opacity: .6; }
+.send-hint { font-family: var(--font-accent); font-style: italic; font-size: 16px; color: var(--ink-muted); margin: 6px 0 0; line-height: 1.3; }
+.send-hint.err { color: var(--wax-600); font-style: normal; font-family: var(--font-body); font-size: 13px; min-height: 0; }
+.send-hint.err:empty { display: none; }
+.send-status { font-size: 14px; line-height: 1.55; margin: 14px 0 0; min-height: 1.4em; color: var(--olive-700); }
+.send-status.err { color: var(--wax-600); background: var(--linen-200); border: 1px solid var(--wax-600); padding: 10px 12px; text-align: left; }
+.send-status.ok { font-size: 15px; }
+.send-spin { width: 30px; height: 30px; border: 3px solid var(--linen-200); border-top-color: var(--olive-700); border-radius: 50%; margin: 14px auto 0; animation: send-rot .9s linear infinite; }
+.send-spin[hidden], .send-tick[hidden], .send-form[hidden], #sendGo[hidden] { display: none; }
+@keyframes send-rot { to { transform: rotate(360deg); } }
+.send-bar { display: none; height: 8px; background: var(--linen-200); margin-top: 14px; }
+.send-bar i { display: block; height: 100%; width: 0; background: var(--olive-700); transition: width .2s; }
+.send-tick { margin: 4px 0 12px; }
+.send-tick span { display: inline-block; width: 68px; height: 68px; line-height: 68px; border-radius: 50%; background: var(--olive-700); color: var(--cream-100); font-size: 38px; }
+#sendIntro[hidden] { display: none; }
