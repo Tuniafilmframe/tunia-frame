@@ -619,6 +619,7 @@ function curSlot() {
 function syncControls() {
   const s = curSlot();
   const on = !!(s && s.photo);
+  document.body.classList.toggle("slot-active", on);   // điện thoại: chỉ hiện bảng chỉnh khi đang chọn một ảnh
   ["zoom", "rot", "flipBtn", "resetBtn"].forEach(id => $(id).disabled = !on);
   if (on) {
     $("zoom").value = s.zoom;
