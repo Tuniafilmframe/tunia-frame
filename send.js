@@ -39,7 +39,9 @@
     q.delete("shop");
     try { history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash); } catch (e) { /* bỏ qua */ }
   }
-  const shopAddr = () => normalizeAddr(getStored()) || normalizeAddr(CFG.shopAddress);
+  // Trang được mở từ chính máy tiệm (http://<máy tiệm>:8765/app/): gửi thẳng về máy đó, không cần nhập địa chỉ
+  const onShop = location.protocol === "http:" && /^\/app(\/|$)/.test(location.pathname);
+  const shopAddr = () => (onShop && normalizeAddr(location.host)) || normalizeAddr(getStored()) || normalizeAddr(CFG.shopAddress);
 
   const $ = id => document.getElementById(id);
   const btn = $("sendShop");
@@ -72,6 +74,7 @@
   function openModal() {
     cancelled = false; finished = false; active = true;
     $("sendAddr").value = shopAddr();
+    if (onShop) { const a = $("sendAddr"); a.hidden = true; [a.previousElementSibling, a.nextElementSibling].forEach(n => { if (n) n.hidden = true; }); }
     $("sendAddrErr").textContent = "";
     $("sendModal").hidden = false;
     document.body.classList.add("modal-open");
