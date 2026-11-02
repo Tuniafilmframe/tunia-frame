@@ -313,6 +313,7 @@ function updateSetTabs() {
     }
     b.textContent = label;
     b.classList.toggle("active", s === set);
+    if (s === set && set !== lastActiveSet) { lastActiveSet = set; centerInRow($("sets"), b); }
   });
 }
 
@@ -376,11 +377,18 @@ function renderFrameList() {
   updateFrameList();
 }
 
+function centerInRow(box, el) {
+  if (!box || !el || box.scrollWidth <= box.clientWidth + 4) return;
+  box.scrollTo({ left: el.offsetLeft - (box.clientWidth - el.offsetWidth) / 2, behavior: "smooth" });
+}
+let lastActiveFrame = null, lastActiveSet = null;
+
 function updateFrameList() {
   document.querySelectorAll(".frame-btn").forEach(b => {
     const e = entries[+b.dataset.i];
     const filled = e.slots.filter(s => s.photo).length;
     b.classList.toggle("active", e === cur);
+    if (e === cur && cur !== lastActiveFrame) { lastActiveFrame = cur; centerInRow($("frames"), b); }
     b.classList.toggle("done", filled === e.slots.length);
     b.querySelector(".frame-progress").textContent =
       filled === e.slots.length ? `✓ Đủ ${filled} ảnh` : `${filled}/${e.slots.length} ảnh`;
@@ -1014,6 +1022,9 @@ const frameDone = e => e.slots.length > 0 && e.slots.every(s => s.photo);
 $("download").onclick = downloadSheet;
 $("download2").onclick = downloadSheet;
 $("downloadFrame").onclick = () => downloadFrame(cur);
+
+// Hướng dẫn: mở sẵn trên máy tính, thu gọn trên điện thoại
+if ($("howto") && matchMedia("(min-width: 961px)").matches) $("howto").open = true;
 
 // ----- Pop-up: khuyên dùng Chrome hoặc Safari để lưu được ảnh -----
 (function browserTip() {
