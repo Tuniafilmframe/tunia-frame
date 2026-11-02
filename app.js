@@ -29,6 +29,24 @@ function xButton(s) {
   dx /= len; dy /= len;
   return { x: s.ax + dx * r * 1.25, y: s.ay + dy * r * 1.25, r };
 }
+// Nút xoay: ưu tiên góc trên-trái; nếu ô quá nhỏ (chạm nút X) thì chuyển sang góc dưới
+function rotButton(s) {
+  const r = X_RADIUS_PX * uiScale();
+  const xb = xButton(s);
+  const at = ([ax, ay]) => {
+    let dx = s.cx - ax, dy = s.cy - ay;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: ax + dx / len * r * 1.25, y: ay + dy / len * r * 1.25, r };
+  };
+  let pick = null;
+  for (const k of ["tl", "bl", "br"]) {
+    const b = at(s.corners[k]);
+    if (!pick) pick = b;
+    if (Math.hypot(b.x - xb.x, b.y - xb.y) >= r * 2.4) { pick = b; break; }
+  }
+  return pick;
+}
+const inRot = (s, p) => { const b = rotButton(s); return Math.hypot(p.x - b.x, p.y - b.y) <= b.r * 1.35; };
 const inX = (s, p) => { const b = xButton(s); return Math.hypot(p.x - b.x, p.y - b.y) <= b.r * 1.35; };
 function removePhoto(s) {
   Object.assign(s, { photo: null, file: null, ow: 0, oh: 0 }, RESET);
@@ -174,12 +192,15 @@ function detectSlots(img, FW, FH) {
       if (qy < rh - 1) seed(q + rw);
     }
     const mask = new Uint8Array(rn);
-    let mx0 = rw, my0 = rh, mx1 = 0, my1 = 0, mArea = 0, sx = 0, sy = 0, bestAx = -1e9, ax = 0, ay = 0;
+    let mx0 = rw, my0 = rh, mx1 = 0, my1 = 0, mArea = 0, sx = 0, sy = 0, bestAx = -1e9, ax = 0, ay = 0, bestTl = 1e9, tlx = 0, tly = 0, bestBl = -1e9, blx = 0, bly = 0, bestBr = -1e9, brx = 0, bry = 0;
     for (let y = 0; y < rh; y++) {
       for (let x = 0; x < rw; x++) {
         if (!outside[y * rw + x]) {
           mask[y * rw + x] = 1; mArea++; sx += x; sy += y;
-          if (x - y > bestAx) { bestAx = x - y; ax = x; ay = y; }   // điểm xa nhất về phía góc trên-phải
+          if (x - y > bestAx) { bestAx = x - y; ax = x; ay = y; }       // góc trên-phải
+          if (x + y < bestTl) { bestTl = x + y; tlx = x; tly = y; }     // góc trên-trái
+          if (y - x > bestBl) { bestBl = y - x; blx = x; bly = y; }     // góc dưới-trái
+          if (x + y > bestBr) { bestBr = x + y; brx = x; bry = y; }     // góc dưới-phải
           if (x < mx0) mx0 = x;
           if (x > mx1) mx1 = x;
           if (y < my0) my0 = y;
@@ -229,6 +250,11 @@ function detectSlots(img, FW, FH) {
       x: (rx0 + mx0) / sc, y: (ry0 + my0) / sc, w: bw / sc, h: bh / sc,
       cx: (rx0 + sx / mArea) / sc, cy: (ry0 + sy / mArea) / sc,
       ax: (rx0 + ax) / sc, ay: (ry0 + ay) / sc,
+      corners: {
+        tl: [(rx0 + tlx) / sc, (ry0 + tly) / sc],
+        bl: [(rx0 + blx) / sc, (ry0 + bly) / sc],
+        br: [(rx0 + brx) / sc, (ry0 + bry) / sc],
+      },
       clip, isRect, outline,
       hitmask: { x0: rx0 + mx0, y0: ry0 + my0, bw, bh, sc, data: hm },
     });
@@ -458,6 +484,28 @@ function drawOverlay(c, e, s, i, active) {
     c.moveTo(b.x - k, b.y - k); c.lineTo(b.x + k, b.y + k);
     c.moveTo(b.x + k, b.y - k); c.lineTo(b.x - k, b.y + k);
     c.stroke();
+    // nút xoay (mũi tên cong)
+    const q = rotButton(s);
+    c.beginPath();
+    c.arc(q.x, q.y, q.r, 0, Math.PI * 2);
+    c.fillStyle = "rgba(61,69,48,0.94)";
+    c.fill();
+    c.lineWidth = Math.max(1.5 * uiScale(), q.r * 0.08);
+    c.strokeStyle = "#F1ECE1";
+    c.stroke();
+    const ar = q.r * 0.5, a0 = -0.15 * Math.PI, a1 = 1.45 * Math.PI;
+    c.lineWidth = q.r * 0.15;
+    c.beginPath();
+    c.arc(q.x, q.y, ar, a0, a1);
+    c.stroke();
+    const ex = q.x + ar * Math.cos(a1), ey = q.y + ar * Math.sin(a1), tx = -Math.sin(a1), ty = Math.cos(a1), h = q.r * 0.34;
+    c.beginPath();
+    c.moveTo(ex + tx * h, ey + ty * h);
+    c.lineTo(ex - tx * h * 0.2 + ty * h * 0.9, ey - ty * h * 0.2 - tx * h * 0.9);
+    c.lineTo(ex - tx * h * 0.2 - ty * h * 0.9, ey - ty * h * 0.2 + tx * h * 0.9);
+    c.closePath();
+    c.fillStyle = "#F1ECE1";
+    c.fill();
   }
   if (s.photo && s !== editSlot && slotDpi(s) < MIN_PRINT_DPI) {
     const t = Math.max(fs * 0.38, 12);
@@ -582,7 +630,7 @@ function syncControls() {
     ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”, hoặc tải riêng từng khung."
     : frameDone(cur)
       ? `${cur.meta.name} đã đủ ảnh. Bấm “Tải khung này” để tải riêng, hoặc ghép tiếp các khung còn lại (cả bộ: ${filled}/${total}).`
-      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô trống để thêm ảnh; bấm vào ảnh để chỉnh hoặc xóa (dấu X).`;
+      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô trống để thêm ảnh; bấm vào ảnh để hiện nút xóa (X) và nút xoay.`;
   if (blurry) $("hint").textContent = `Ảnh ở ô này hơi nhỏ (khoảng ${Math.round(slotDpi(s))} dpi) nên in ra có thể mờ. Hãy thu nhỏ lại hoặc chọn ảnh gốc rõ hơn.`;
 }
 
@@ -681,6 +729,12 @@ canvas.addEventListener("pointerdown", e => {
       drag = { i: -1, xbtn: editSlot, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
       return;
     }
+    if (editSlot && editSlot.photo && inRot(editSlot, p)) {        // bấm đúng nút xoay
+      const s = editSlot;
+      const pcx = s.x + s.w / 2 + s.px, pcy = s.y + s.h / 2 + s.py;
+      drag = { i: -1, rotSlot: s, a0: Math.atan2(p.y - pcy, p.x - pcx), rot0: s.rot, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+      return;
+    }
     const i = hit(p.x, p.y);
     drag = { i, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
     const next = i >= 0 && cur.slots[i].photo ? cur.slots[i] : null;  // bấm vào ảnh: hiện X
@@ -714,6 +768,19 @@ canvas.addEventListener("pointermove", e => {
 
   if (!drag) return;
   if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.moved = true;
+  if (drag.rotSlot) {
+    if (drag.moved) {
+      const s = drag.rotSlot, p = toFrame(e);
+      const a = Math.atan2(p.y - (s.y + s.h / 2 + s.py), p.x - (s.x + s.w / 2 + s.px));
+      let deg = wrapDeg(drag.rot0 + (a - drag.a0) * 180 / Math.PI);
+      const near = Math.round(deg / 45) * 45;
+      if (Math.abs(deg - near) <= 2) deg = near;           // hít vào các góc 0°, 45°, 90°...
+      s.rot = wrapDeg(Math.round(deg));
+      renderPreview();
+    }
+    drag.lx = e.clientX; drag.ly = e.clientY;
+    return;
+  }
   const s = drag.i >= 0 ? cur.slots[drag.i] : null;
   if (drag.moved && s && s.photo && (e.pointerType !== "touch" || dragMode)) {
     const r = canvas.getBoundingClientRect();
@@ -738,6 +805,10 @@ function endPointer(e, cancelled) {
   if (pointers.size === 0) {
     if (!cancelled && drag && drag.xbtn && !drag.moved && inX(drag.xbtn, toFrame({ clientX: drag.lx, clientY: drag.ly }))) {
       removePhoto(drag.xbtn);                                     // thả tay trên dấu X: xóa ảnh
+    } else if (!cancelled && drag && drag.rotSlot && !drag.moved && inRot(drag.rotSlot, toFrame({ clientX: drag.lx, clientY: drag.ly }))) {
+      const nr = wrapDeg(Math.round(drag.rotSlot.rot) + 90);
+      drag.rotSlot.rot = nr === -180 ? 180 : nr;   // bấm: xoay thêm 90°
+      renderPreview();
     } else if (!cancelled && drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
       sel = drag.i;
       fileInput.click();  // bấm vào ô trống => mở chọn ảnh
@@ -746,6 +817,12 @@ function endPointer(e, cancelled) {
     pinch = null;
   }
 }
+canvas.addEventListener("touchstart", e => {
+  if (!cur || !editSlot || !editSlot.photo || e.touches.length !== 1) return;
+  const t = e.touches[0], r = canvas.getBoundingClientRect();
+  const p = { x: cur.view.x + (t.clientX - r.left) / r.width * cur.view.w, y: cur.view.y + (t.clientY - r.top) / r.height * cur.view.h };
+  if (inX(editSlot, p) || inRot(editSlot, p)) e.preventDefault();   // giữ ngón trên nút: không cuộn trang
+}, { passive: false });
 canvas.addEventListener("pointerup", e => endPointer(e, false));
 canvas.addEventListener("pointercancel", e => endPointer(e, true));
 
