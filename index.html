@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="style.css?v=17" />
+<link rel="stylesheet" href="style.css?v=18" />
 </head>
 <body>
 
@@ -71,10 +71,6 @@
         </div>
       </div>
       <p class="hint" id="hint"></p>
-      <div class="mode-switch" id="modeSwitch" hidden>
-        <button class="mode-btn active" data-mode="scroll">Cuộn trang</button>
-        <button class="mode-btn" data-mode="drag">Kéo ảnh</button>
-      </div>
       <div class="btn-row">
         <label class="btn primary">Thêm nhiều ảnh<input type="file" id="fileMulti" accept="image/*" multiple /></label>
         <label class="btn">Chọn ảnh cho ô đang chọn<input type="file" id="file" accept="image/*" /></label>
@@ -93,7 +89,7 @@
       </div>
       <details class="howto" id="howto">
         <summary>Hướng dẫn thao tác</summary>
-        <p class="note">Bấm vào ảnh trong khung: góc trên phải hiện dấu X để xóa ảnh; nút xoay ở góc còn lại (bấm để xoay 90°, kéo để xoay tự do). Điện thoại: dùng hai ngón để phóng to, thu nhỏ và di chuyển ảnh; bấm “Kéo ảnh” nếu muốn dùng một ngón, bấm “Cuộn trang” để cuộn lại. Máy tính: kéo ảnh để căn vị trí, giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
+        <p class="note">Bấm vào ảnh trong khung để chỉnh: lúc này kéo ảnh để di chuyển (trang đứng yên), góc trên phải có dấu X để xóa ảnh, góc còn lại có nút xoay (bấm để xoay 90°, kéo để xoay tự do). Bấm ra ngoài ảnh để thoát, rồi vuốt để cuộn trang như bình thường. Dùng hai ngón để phóng to, thu nhỏ ảnh; trên máy tính giữ Ctrl rồi lăn chuột để phóng to. Ảnh chỉ được xử lý trên máy của bạn, không gửi lên máy chủ.</p>
       </details>
       <h3 class="panel-title mini-title">Bản in A4 · xem trước</h3>
       <canvas id="sheetMini" class="sheet-mini"></canvas>
@@ -206,6 +202,6 @@
   </div>
 </div>
 
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

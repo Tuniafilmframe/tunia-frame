@@ -55,16 +55,8 @@ function removePhoto(s) {
 }
 let wasComplete = false;
 
-// Điện thoại: mặc định một ngón để cuộn trang; hai ngón để phóng to/thu nhỏ và di chuyển ảnh.
-// Bật "Kéo ảnh" để dùng một ngón di chuyển ảnh (lúc đó khung không cuộn trang được).
-let dragMode = false;
-function setDragMode(on) {
-  dragMode = on;
-  canvas.classList.toggle("drag-mode", on);
-  document.querySelectorAll(".mode-btn").forEach(b => b.classList.toggle("active", (b.dataset.mode === "drag") === on));
-}
-document.querySelectorAll(".mode-btn").forEach(b => { b.onclick = () => setDragMode(b.dataset.mode === "drag"); });
-if (matchMedia("(pointer: coarse)").matches || "ontouchstart" in window) $("modeSwitch").hidden = false;
+// Quy tắc cảm ứng: bình thường vuốt trên khung = cuộn trang. Chạm vào một ảnh = vào chế độ chỉnh:
+// lúc đó (canvas.editing) ngón tay trên khung chỉ kéo ảnh, trang không cuộn. Chạm ra ngoài = thoát chế độ chỉnh.
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -550,6 +542,7 @@ function drawSheet(c, k, sources) {
 
 function renderPreview() {
   if (!cur) return;
+  canvas.classList.toggle("editing", !!editSlot);   // đang chỉnh ảnh: khung nhận hết thao tác chạm, trang không cuộn qua khung
   canvas.width = Math.round(cur.view.w * K);
   canvas.height = Math.round(cur.view.h * K);
   ctx.imageSmoothingQuality = "high";
@@ -639,7 +632,7 @@ function syncControls() {
     ? "Đã đủ ảnh cho cả bộ. Xem bản in A4 bên dưới và bấm “Tải bản in A4”, hoặc tải riêng từng khung."
     : frameDone(cur)
       ? `${cur.meta.name} đã đủ ảnh. Bấm “Tải khung này” để tải riêng, hoặc ghép tiếp các khung còn lại (cả bộ: ${filled}/${total}).`
-      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô trống để thêm ảnh; bấm vào ảnh để hiện nút xóa (X) và nút xoay.`;
+      : `${cur.meta.name}: ${here}/${cur.slots.length} ảnh · Cả bộ: ${filled}/${total}. Bấm vào ô trống để thêm ảnh; bấm vào ảnh để chỉnh (kéo ảnh, xóa X, xoay); bấm ra ngoài để thoát.`;
   if (blurry) $("hint").textContent = `Ảnh ở ô này hơi nhỏ (khoảng ${Math.round(slotDpi(s))} dpi) nên in ra có thể mờ. Hãy thu nhỏ lại hoặc chọn ảnh gốc rõ hơn.`;
 }
 
@@ -745,12 +738,15 @@ canvas.addEventListener("pointerdown", e => {
       return;
     }
     const i = hit(p.x, p.y);
-    drag = { i, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
-    const next = i >= 0 && cur.slots[i].photo ? cur.slots[i] : null;  // bấm vào ảnh: hiện X
-    const changed = next !== editSlot || (i >= 0 && i !== sel);
-    editSlot = next;
-    if (i >= 0) sel = i;
-    if (changed) renderPreview();
+    const touch = e.pointerType === "touch";
+    drag = { i, touch, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false };
+    if (!touch) {                                                   // chuột/bút: vào chế độ chỉnh ngay khi bấm
+      const next = i >= 0 && cur.slots[i].photo ? cur.slots[i] : null;
+      const changed = next !== editSlot || (i >= 0 && i !== sel);
+      editSlot = next;
+      if (i >= 0) sel = i;
+      if (changed) renderPreview();
+    }                                                               // cảm ứng: đợi thả tay (chạm), để vuốt cuộn trang không vô tình vào chế độ chỉnh
   } else if (pointers.size === 2) {
     if (drag) drag.moved = true;   // không coi là bấm để mở chọn ảnh
     startPinch();
@@ -791,7 +787,7 @@ canvas.addEventListener("pointermove", e => {
     return;
   }
   const s = drag.i >= 0 ? cur.slots[drag.i] : null;
-  if (drag.moved && s && s.photo && (e.pointerType !== "touch" || dragMode)) {
+  if (drag.moved && s && s.photo && (e.pointerType !== "touch" || editSlot === s)) {
     const r = canvas.getBoundingClientRect();
     s.px += (e.clientX - drag.lx) * cur.view.w / r.width;
     s.py += (e.clientY - drag.ly) * cur.view.h / r.height;
@@ -818,6 +814,11 @@ function endPointer(e, cancelled) {
       const nr = wrapDeg(Math.round(drag.rotSlot.rot) + 90);
       drag.rotSlot.rot = nr === -180 ? 180 : nr;   // bấm: xoay thêm 90°
       renderPreview();
+    } else if (!cancelled && drag && drag.touch && !drag.moved) {      // chạm bằng ngón tay
+      const i = drag.i, t = i >= 0 ? cur.slots[i] : null;
+      if (t && t.photo) { editSlot = t; sel = i; renderPreview(); }                 // chạm vào ảnh: vào chế độ chỉnh
+      else if (t) { editSlot = null; sel = i; renderPreview(); fileInput.click(); } // chạm ô trống: chọn ảnh
+      else if (editSlot) { editSlot = null; renderPreview(); }                      // chạm ra ngoài ô: thoát chế độ chỉnh
     } else if (!cancelled && drag && !drag.moved && drag.i >= 0 && !cur.slots[drag.i].photo) {
       sel = drag.i;
       fileInput.click();  // bấm vào ô trống => mở chọn ảnh
@@ -1026,6 +1027,13 @@ $("downloadFrame").onclick = () => downloadFrame(cur);
 
 // Hướng dẫn: mở sẵn trên máy tính, thu gọn trên điện thoại
 if ($("howto") && matchMedia("(min-width: 961px)").matches) $("howto").open = true;
+
+document.addEventListener("pointerdown", e => {      // bấm ra ngoài khung (ngoài bảng chỉnh) = thoát chế độ chỉnh
+  if (!editSlot || canvas.contains(e.target) || e.target.closest(".panel-ctrl, .modal")) return;
+  editSlot = null;
+  renderPreview();
+}, true);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && editSlot) { editSlot = null; renderPreview(); } });
 
 // ----- Pop-up: khuyên dùng Chrome hoặc Safari để lưu được ảnh -----
 (function browserTip() {
