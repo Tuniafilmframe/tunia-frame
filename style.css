@@ -573,3 +573,5 @@ body.modal-open { overflow: hidden; }
 body.view-only #canvas { pointer-events: none; }
 body.view-only .stage .btn-row, body.view-only .panel-ctrl, body.view-only #sendShop { display: none !important; }
 body.view-only #wrap { opacity: .9; }
+
+.modal-note { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--olive-700); }
