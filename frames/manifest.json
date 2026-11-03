@@ -44,7 +44,9 @@
           "x": 695,
           "y": 1785
         }
-      ]
+      ],
+      "nen": "da-beo",
+      "nenName": "Da Beo"
     },
     {
       "id": "hongkong",
@@ -120,7 +122,9 @@
             "h": 1155
           }
         }
-      ]
+      ],
+      "nen": "viet-xua",
+      "nenName": "Việt Xưa"
     },
     {
       "id": "rifle-green",
@@ -173,7 +177,9 @@
           "x": 1212,
           "y": 2408
         }
-      ]
+      ],
+      "nen": "olive",
+      "nenName": "Olive"
     }
   ]
 }

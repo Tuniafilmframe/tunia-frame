@@ -564,3 +564,12 @@ body.modal-open { overflow: hidden; }
 .send-tick { margin: 4px 0 12px; }
 .send-tick span { display: inline-block; width: 68px; height: 68px; line-height: 68px; border-radius: 50%; background: var(--olive-700); color: var(--cream-100); font-size: 38px; }
 #sendIntro[hidden] { display: none; }
+
+/* ----- Khóa theo nền chụp ----- */
+.set-tab.locked { opacity: .55; border-style: dashed; }
+.set-tab.locked.active { opacity: .85; }
+.lock-note { margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--olive-700); background: var(--linen-200); color: var(--olive-900, #2A3020); font-size: 14px; line-height: 1.5; }
+.lock-note[hidden] { display: none; }
+body.view-only #canvas { pointer-events: none; }
+body.view-only .stage .btn-row, body.view-only .panel-ctrl, body.view-only #sendShop { display: none !important; }
+body.view-only #wrap { opacity: .9; }

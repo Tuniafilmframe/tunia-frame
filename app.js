@@ -302,6 +302,37 @@ let sets = [];
 const setCache = {};        // id bộ -> entries (giữ ảnh đã chọn khi đổi bộ)
 let loadToken = 0;
 
+// ----- Khóa theo nền chụp: mỗi nền có mã QR riêng (?nen=da-beo | olive | viet-xua) -----
+// Bộ không thuộc nền đang chụp vẫn xem được mẫu nhưng không ghép/tải được.
+let viewOnly = false;
+let nenParam = "";
+try {
+  const q = (new URLSearchParams(location.search).get("nen") || "").trim().toLowerCase();
+  if (q) sessionStorage.setItem("tunia-nen", q);
+  nenParam = q || sessionStorage.getItem("tunia-nen") || "";
+} catch (e) { /* bỏ qua */ }
+let activeIds = null;       // danh sách bộ đang chụp do máy tiệm báo (null = không giới hạn)
+const onShopSite = location.protocol === "http:" && /^\/app(\/|$)/.test(location.pathname);
+const isLocked = s => (!!nenParam && s.nen !== nenParam) || (!!activeIds && !activeIds.includes(s.id));
+
+async function fetchActive() {
+  if (!onShopSite) return;
+  try {
+    const j = await (await fetch("/api/active-sets", { cache: "no-store" })).json();
+    activeIds = Array.isArray(j.active) ? j.active : null;
+  } catch (e) { /* mất kết nối: giữ nguyên */ }
+}
+function applyLock() {
+  viewOnly = !!set && isLocked(set);
+  document.body.classList.toggle("view-only", viewOnly);
+  const n = $("lockNote");
+  if (n) {
+    n.hidden = !viewOnly;
+    n.textContent = viewOnly ? `Tiệm không chụp nền này lúc này, nên bạn chỉ xem được mẫu khung "${set.name}". Muốn ghép ảnh, hãy quét mã QR dán ngay tại nền bạn chụp.` : "";
+  }
+  if (viewOnly) { editSlot = null; if (cur) renderPreview(); }
+}
+
 async function init() {
   let manifest;
   try {
@@ -313,8 +344,15 @@ async function init() {
   }
   sets = manifest.sets || [];
   if (!sets.length) { $("hint").textContent = "Chưa có bộ khung nào."; return; }
+  if (nenParam && !sets.some(x => x.nen === nenParam)) { nenParam = ""; try { sessionStorage.removeItem("tunia-nen"); } catch (e) {} }
+  await fetchActive();
   renderSetTabs();
-  await loadSet(sets[0]);
+  await loadSet(sets.find(x => !isLocked(x)) || sets[0]);
+  if (onShopSite) {
+    const again = async () => { await fetchActive(); updateSetTabs(); applyLock(); };
+    setInterval(again, 30000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") again(); });
+  }
 }
 
 function renderSetTabs() {
@@ -341,7 +379,9 @@ function updateSetTabs() {
       list.forEach(e => e.slots.forEach(x => { t++; if (x.photo) f++; }));
       label += t && f === t ? " ✓" : ` · ${f}/${t}`;
     }
-    b.textContent = label;
+    const lk = isLocked(s);
+    b.textContent = (lk ? "🔒 " : "") + label;
+    b.classList.toggle("locked", lk);
     b.classList.toggle("active", s === set);
     if (s === set && set !== lastActiveSet) { lastActiveSet = set; centerInRow($("sets"), b); }
   });
@@ -352,6 +392,7 @@ async function loadSet(s) {
   set = s;
   $("setName").textContent = s.name;
   updateSetTabs();
+  applyLock();
   if (!setCache[s.id]) {
     $("loading").hidden = false;
     try {
@@ -504,7 +545,7 @@ function drawOverlay(c, e, s, i, active) {
     c.font = `600 ${fs * 0.6}px "Be Vietnam Pro", system-ui, sans-serif`;
     c.fillText(`Ô ${i + 1}`, cx, cy - fs * 0.4);
     c.font = `${fs * 0.4}px "Be Vietnam Pro", system-ui, sans-serif`;
-    c.fillText(s.members ? `Bấm để thêm 1 ảnh trải dài ${s.members.length} ô` : "Bấm để thêm ảnh", cx, cy + fs * 0.4);
+    if (!viewOnly) c.fillText(s.members ? `Bấm để thêm 1 ảnh trải dài ${s.members.length} ô` : "Bấm để thêm ảnh", cx, cy + fs * 0.4);
   } else if (s === editSlot) {
     const b = xButton(s);
     c.setLineDash([]);
@@ -692,11 +733,12 @@ async function putPhoto(file, e, i) {
 fileInput.onchange = () => {
   const f = fileInput.files[0];
   fileInput.value = "";
-  if (f && cur && sel >= 0) putPhoto(f, cur, sel);
+  if (f && cur && sel >= 0 && !viewOnly) putPhoto(f, cur, sel);
 };
 
 // Thêm nhiều ảnh: điền lần lượt vào ô trống, khung đang mở trước rồi tới các khung sau
 $("fileMulti").onchange = async () => {
+  if (viewOnly) { $("fileMulti").value = ""; return; }
   const files = [...$("fileMulti").files].filter(f => f.type.startsWith("image/"));
   $("fileMulti").value = "";
   if (!cur) return;
@@ -904,7 +946,7 @@ canvas.addEventListener("wheel", e => {
 canvas.addEventListener("dragover", e => e.preventDefault());
 canvas.addEventListener("drop", e => {
   e.preventDefault();
-  if (!cur) return;
+  if (!cur || viewOnly) return;
   const f = e.dataTransfer.files[0];
   const p = toFrame(e), i = hit(p.x, p.y);
   putPhoto(f, cur, i >= 0 ? i : cur.slots.findIndex(s => !s.photo));
