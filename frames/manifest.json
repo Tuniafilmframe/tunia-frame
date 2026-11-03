@@ -132,22 +132,15 @@
       },
       "frames": [
         {
-          "id": "gr-1",
-          "name": "Khung 1 · Chữ viết tay 2 ô",
-          "file": "gr-1.png",
-          "x": 0,
-          "y": 0
-        },
-        {
           "id": "gr-2",
-          "name": "Khung 2 · Dải 3 ô",
+          "name": "Khung 1 · Dải 3 ô",
           "file": "gr-2.png",
           "x": 695,
           "y": 0
         },
         {
           "id": "gr-3",
-          "name": "Khung 3 · Lưới (hàng giữa 1 ảnh dài)",
+          "name": "Khung 2 · Lưới (hàng giữa 1 ảnh dài)",
           "file": "gr-3.png",
           "x": 1299,
           "y": 0,
@@ -160,29 +153,22 @@
           ]
         },
         {
-          "id": "gr-4",
-          "name": "Khung 4 · Thẻ Pantone",
-          "file": "gr-4.png",
-          "x": 0,
-          "y": 1786
-        },
-        {
           "id": "gr-5",
-          "name": "Khung 5 · Bồ câu 1 ô",
+          "name": "Khung 3 · Bồ câu 1 ô",
           "file": "gr-5.png",
-          "x": 681,
+          "x": 695,
           "y": 1786
         },
         {
           "id": "gr-6",
-          "name": "Khung 6 · Love 2 ô",
+          "name": "Khung 4 · Love 2 ô",
           "file": "gr-6.png",
           "x": 0,
           "y": 2408
         },
         {
           "id": "gr-7",
-          "name": "Khung 7 · Je t’aime 2 ô",
+          "name": "Khung 5 · Je t’aime 2 ô",
           "file": "gr-7.png",
           "x": 1212,
           "y": 2408
