@@ -123,68 +123,8 @@
       ]
     },
     {
-      "id": "birthday",
-      "name": "Bộ Birthday",
-      "sheet": {
-        "w": 2480,
-        "h": 3508,
-        "bg": "#ffffff"
-      },
-      "frames": [
-        {
-          "id": "bd-1",
-          "name": "Khung 1 · Birthday",
-          "file": "bd-1.png",
-          "x": 15,
-          "y": 15
-        },
-        {
-          "id": "bd-2",
-          "name": "Khung 2 · Make a Wish",
-          "file": "bd-2.png",
-          "x": 1491,
-          "y": 15
-        },
-        {
-          "id": "bd-3",
-          "name": "Khung 3 · Birthday to you",
-          "file": "bd-3.png",
-          "x": 15,
-          "y": 1808
-        },
-        {
-          "id": "bd-4",
-          "name": "Khung 4 · Polaroid",
-          "file": "bd-4.png",
-          "x": 1095,
-          "y": 1808
-        },
-        {
-          "id": "bd-5",
-          "name": "Khung 5 · Dải 3 ô",
-          "file": "bd-5.png",
-          "x": 2099,
-          "y": 1809
-        },
-        {
-          "id": "bd-6",
-          "name": "Khung 6 · Hàng 3 ô",
-          "file": "bd-6.png",
-          "x": 15,
-          "y": 3061
-        },
-        {
-          "id": "bd-7",
-          "name": "Khung 7 · Trái tim",
-          "file": "bd-7.png",
-          "x": 1261,
-          "y": 3053
-        }
-      ]
-    },
-    {
       "id": "rifle-green",
-      "name": "Bộ Rifle Green",
+      "name": "Bộ Olive",
       "sheet": {
         "w": 2480,
         "h": 3508,
