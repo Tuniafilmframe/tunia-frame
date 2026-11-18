@@ -50,7 +50,7 @@
     },
     {
       "id": "hongkong",
-      "name": "Bộ Hong Kong",
+      "name": "Bộ Hong Kong 1",
       "sheet": {
         "w": 2480,
         "h": 3508,
@@ -124,7 +124,7 @@
         }
       ],
       "nen": "viet-xua",
-      "nenName": "Việt Xưa"
+      "nenName": "Hong Kong 1"
     },
     {
       "id": "hongkong-v2",
@@ -183,7 +183,7 @@
         }
       ],
       "nen": "viet-xua",
-      "nenName": "Việt Xưa (bản 2)"
+      "nenName": "Hong Kong 2"
     },
     {
       "id": "rifle-green",
