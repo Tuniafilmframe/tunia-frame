@@ -92,7 +92,7 @@ function loadPhoto(file) {
 // Tìm các ô: vùng trong suốt nằm bên trong khung (không chạm mép).
 // Mỗi ô có hình dạng thật (chữ nhật, oval, góc khuyết...) và cả vùng mờ dần ở mép.
 const MIN_SLOT_AREA = 6000;   // px² của khung; nhỏ hơn thì coi là chi tiết, không phải ô
-function detectSlots(img, FW, FH) {
+function detectSlots(img, FW, FH, allowEdge) {
   const sc = Math.min(1, 2600 / Math.max(FW, FH));
   const w = Math.round(FW * sc), h = Math.round(FH * sc), n = w * h;
   const tmp = document.createElement("canvas");
@@ -134,7 +134,7 @@ function detectSlots(img, FW, FH) {
   const PAD = 60;
   const slots = [];
   for (const c of comps) {
-    if (c.touch || c.area / (sc * sc) < MIN_SLOT_AREA) continue;
+    if ((c.touch && !allowEdge) || c.area / (sc * sc) < MIN_SLOT_AREA) continue;
     // 2) Vùng làm việc quanh ô; mở rộng sang các điểm mờ (alpha < 250) nối liền với ô
     const rx0 = Math.max(0, c.x0 - PAD), ry0 = Math.max(0, c.y0 - PAD);
     const rx1 = Math.min(w - 1, c.x1 + PAD), ry1 = Math.min(h - 1, c.y1 + PAD);
@@ -400,7 +400,7 @@ async function loadSet(s) {
         const img = await loadImage("frames/" + meta.file);
         const FW = img.naturalWidth, FH = img.naturalHeight;
         const view = meta.view || { x: 0, y: 0, w: FW, h: FH };   // phần nhìn thấy khi ghép (bỏ lề thừa)
-        return { meta, img, FW, FH, view, slots: mergeGroups(detectSlots(img, FW, FH), meta.groups).map(blankSlot) };
+        return { meta, img, FW, FH, view, slots: mergeGroups(detectSlots(img, FW, FH, !!meta.edge), meta.groups).map(blankSlot) };
       }));
     } catch (e) {
       $("loading").hidden = true;
