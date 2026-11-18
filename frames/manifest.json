@@ -59,53 +59,131 @@
       "frames": [
         {
           "id": "hk-1",
-          "name": "Khung 1 · Đĩa than",
+          "name": "Khung 1 · Dải 3 ô",
           "file": "hk-1.png",
+          "x": 0,
+          "y": 0,
+          "view": {
+            "x": 26,
+            "y": 256,
+            "w": 542,
+            "h": 1964
+          }
+        },
+        {
+          "id": "hk-2",
+          "name": "Khung 2 · Bưu thiếp",
+          "file": "hk-2.png",
+          "x": 568,
+          "y": 0,
+          "view": {
+            "x": 0,
+            "y": 256,
+            "w": 1348,
+            "h": 1968
+          }
+        },
+        {
+          "id": "hk-3",
+          "name": "Khung 3 · Dải 2 ô",
+          "file": "hk-3.png",
+          "x": 1916,
+          "y": 0,
+          "view": {
+            "x": 0,
+            "y": 256,
+            "w": 553,
+            "h": 1964
+          }
+        },
+        {
+          "id": "hk-4",
+          "name": "Khung 4 · Ngang 2 ô",
+          "file": "hk-4.png",
+          "x": 0,
+          "y": 2243,
+          "view": {
+            "x": 26,
+            "y": 22,
+            "w": 1383,
+            "h": 1155
+          }
+        },
+        {
+          "id": "hk-5",
+          "name": "Khung 5 · Ngang 3 ô",
+          "file": "hk-5.png",
+          "x": 1409,
+          "y": 2243,
+          "view": {
+            "x": 0,
+            "y": 22,
+            "w": 1060,
+            "h": 1155
+          }
+        }
+      ],
+      "nen": "viet-xua",
+      "nenName": "Việt Xưa"
+    },
+    {
+      "id": "hongkong-v2",
+      "name": "Bộ Hong Kong 2",
+      "sheet": {
+        "w": 2480,
+        "h": 3508,
+        "bg": "#ffffff"
+      },
+      "frames": [
+        {
+          "id": "hkv2-1",
+          "name": "Khung 1 · Đĩa than",
+          "file": "hkv2-1.png",
           "x": 62,
           "y": 0,
           "edge": true
         },
         {
-          "id": "hk-2",
+          "id": "hkv2-2",
           "name": "Khung 2 · Hong Kong lớn",
-          "file": "hk-2.png",
+          "file": "hkv2-2.png",
           "x": 1299,
           "y": 0,
           "edge": true
         },
         {
-          "id": "hk-3",
+          "id": "hkv2-3",
           "name": "Khung 3 · Quang phục",
-          "file": "hk-3.png",
+          "file": "hkv2-3.png",
           "x": 62,
           "y": 834,
           "edge": true
         },
         {
-          "id": "hk-4",
+          "id": "hkv2-4",
           "name": "Khung 4 · Đỏ lớn + dải",
-          "file": "hk-4.png",
+          "file": "hkv2-4.png",
           "x": 62,
           "y": 1784
         },
         {
-          "id": "hk-5",
+          "id": "hkv2-5",
           "name": "Khung 5 · Đỏ 3 ô",
-          "file": "hk-5.png",
+          "file": "hkv2-5.png",
           "x": 750,
           "y": 1784
         },
         {
-          "id": "hk-6",
+          "id": "hkv2-6",
           "name": "Khung 6 · Tunia 香港",
-          "file": "hk-6.png",
+          "file": "hkv2-6.png",
           "x": 1361,
           "y": 1784,
           "edge": true
         }
       ],
       "nen": "viet-xua",
-      "nenName": "Việt Xưa"
+      "nenName": "Việt Xưa (bản 2)"
     },
     {
       "id": "rifle-green",
